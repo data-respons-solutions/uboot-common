@@ -8,3 +8,10 @@ config DR_NVRAM
 	bool "DR NVRAM interface"
 	help
 	  Read/write variables in nvram
+	  
+config CMD_DR_NVRAM
+	depends on DR_COMMON_CONFIGS
+	select DR_NVRAM
+	bool "DR NVRAM interface CMD"
+	help
+	  Command for interface nvram
