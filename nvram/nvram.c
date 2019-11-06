@@ -5,15 +5,6 @@
 #include "nvram.h"
 #include "../libnvram/libnvram.h"
 
-#define CONFIG_NVRAM_BUS	1
-#define CONFIG_NVRAM_CS		0
-#define CONFIG_NVRAM_SPEED	20000000
-#define CONFIG_NVRAM_MODE	0x3
-#define CONFIG_NVRAM_SECTION_A_START	0x140000
-#define CONFIG_NVRAM_SECTION_A_SIZE		0x10000
-#define CONFIG_NVRAM_SECTION_B_START	0x150000
-#define CONFIG_NVRAM_SECTION_B_SIZE		0x10000
-
 struct nvram_data* nvram_priv = NULL;
 struct udevice* flash = NULL;
 
@@ -32,8 +23,8 @@ struct nvram_data {
 static int probe_flash(void)
 {
 	if (!flash) {
-		int r = spi_flash_probe_bus_cs(CONFIG_NVRAM_BUS, CONFIG_NVRAM_CS,
-									CONFIG_NVRAM_SPEED, CONFIG_NVRAM_MODE,
+		int r = spi_flash_probe_bus_cs(CONFIG_DR_NVRAM_BUS, CONFIG_DR_NVRAM_CS,
+									CONFIG_DR_NVRAM_SPEED, CONFIG_DR_NVRAM_MODE,
 									&flash);
 		if (r) {
 			printf("%s: failed probing nvram [%d]: %s\n", __func__, -r, errno_str(-r));
@@ -53,8 +44,8 @@ static int read_section(enum flash_section section, uint8_t* buf)
 		return r;
 	}
 
-	const uint32_t flash_offset = section == SECTION_A ? CONFIG_NVRAM_SECTION_A_START : CONFIG_NVRAM_SECTION_B_START;
-	const uint32_t flash_size = section == SECTION_A ? CONFIG_NVRAM_SECTION_A_SIZE : CONFIG_NVRAM_SECTION_B_SIZE;
+	const uint32_t flash_offset = section == SECTION_A ? CONFIG_DR_NVRAM_SECTION_A_START : CONFIG_DR_NVRAM_SECTION_B_START;
+	const uint32_t flash_size = section == SECTION_A ? CONFIG_DR_NVRAM_SECTION_A_SIZE : CONFIG_DR_NVRAM_SECTION_B_SIZE;
 	r = spi_flash_read_dm(flash, flash_offset, flash_size, buf);
 	if (r) {
 		printf("%s: failed reading nvram [%d]: %s\n", __func__, -r, errno_str(-r));
@@ -73,8 +64,8 @@ static int write_section(enum flash_section section, const uint8_t* buf, uint32_
 		return r;
 	}
 
-	const uint32_t flash_offset = section == SECTION_A ? CONFIG_NVRAM_SECTION_A_START : CONFIG_NVRAM_SECTION_B_START;
-	const uint32_t flash_size = section == SECTION_A ? CONFIG_NVRAM_SECTION_A_SIZE : CONFIG_NVRAM_SECTION_B_SIZE;
+	const uint32_t flash_offset = section == SECTION_A ? CONFIG_DR_NVRAM_SECTION_A_START : CONFIG_DR_NVRAM_SECTION_B_START;
+	const uint32_t flash_size = section == SECTION_A ? CONFIG_DR_NVRAM_SECTION_A_SIZE : CONFIG_DR_NVRAM_SECTION_B_SIZE;
 	if (buf_len > flash_size) {
 		printf("%s: buffer [%ub] larger than flash [%ub]\n", __func__, buf_len, flash_size);
 		return -EINVAL;
@@ -116,15 +107,15 @@ static int nvram_load(void)
 	uint8_t* _section_a = NULL;
 	uint8_t* _section_b = NULL;
 
-	_section_a = malloc(CONFIG_NVRAM_SECTION_A_SIZE);
+	_section_a = malloc(CONFIG_DR_NVRAM_SECTION_A_SIZE);
 	if (!_section_a) {
-		printf("%s: failed allocating memory (A): %d bytes\n", __func__, CONFIG_NVRAM_SECTION_A_SIZE);
+		printf("%s: failed allocating memory (A): %d bytes\n", __func__, CONFIG_DR_NVRAM_SECTION_A_SIZE);
 		r = -ENOMEM;
 		goto exit;
 	}
-	_section_b = malloc(CONFIG_NVRAM_SECTION_B_SIZE);
+	_section_b = malloc(CONFIG_DR_NVRAM_SECTION_B_SIZE);
 	if (!_section_b) {
-		printf("%s: failed allocating memory (B): %d bytes\n", __func__, CONFIG_NVRAM_SECTION_B_SIZE);
+		printf("%s: failed allocating memory (B): %d bytes\n", __func__, CONFIG_DR_NVRAM_SECTION_B_SIZE);
 		r = -ENOMEM;
 		goto exit;
 	}
@@ -139,10 +130,10 @@ static int nvram_load(void)
 	}
 	uint32_t counter_a = 0;
 	uint32_t data_len_a = 0;
-	int is_valid_a = is_valid_nvram_section(_section_a, CONFIG_NVRAM_SECTION_A_SIZE, &data_len_a, &counter_a);
+	int is_valid_a = is_valid_nvram_section(_section_a, CONFIG_DR_NVRAM_SECTION_A_SIZE, &data_len_a, &counter_a);
 	uint32_t counter_b = 0;
 	uint32_t data_len_b = 0;
-	int is_valid_b = is_valid_nvram_section(_section_b, CONFIG_NVRAM_SECTION_B_SIZE, &data_len_b, &counter_b);
+	int is_valid_b = is_valid_nvram_section(_section_b, CONFIG_DR_NVRAM_SECTION_B_SIZE, &data_len_b, &counter_b);
 
 	if (is_valid_a && (counter_a > counter_b)) {
 		nvram_priv->active = SECTION_A;

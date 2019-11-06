@@ -15,3 +15,29 @@ config CMD_DR_NVRAM
 	bool "DR NVRAM interface CMD"
 	help
 	  Command for interface nvram
+
+	  
+config DR_NVRAM_BUS
+	int "SPI bus for flash"
+	
+config DR_NVRAM_CS
+	int "CS for flash"
+	
+config DR_NVRAM_SPEED
+	int "Speed for flash"
+	
+config DR_NVRAM_MODE
+	hex "mode for flash"
+	
+config DR_NVRAM_SECTION_A_START
+	hex "Section a offset in flash"
+
+config DR_NVRAM_SECTION_A_SIZE
+	hex "Section a size in flash"
+	
+config DR_NVRAM_SECTION_B_START
+	hex "Section b offset in flash"
+
+config DR_NVRAM_SECTION_B_SIZE
+	hex "Section b size in flash"
+	
