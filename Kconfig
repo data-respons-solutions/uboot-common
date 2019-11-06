@@ -6,6 +6,5 @@ menuconfig DR_COMMON_CONFIGS
 config DR_NVRAM
 	depends on DR_COMMON_CONFIGS
 	bool "DR NVRAM interface"
-	default y
 	help
 	  Read/write variables in nvram
