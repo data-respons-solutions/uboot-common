@@ -5,8 +5,8 @@
 #include "nvram.h"
 #include "../libnvram/libnvram.h"
 
-struct nvram_data* nvram_priv = NULL;
-struct udevice* flash = NULL;
+static struct nvram_data* nvram_priv = NULL;
+static struct udevice* flash = NULL;
 
 enum flash_section {
 	SECTION_UNKNOWN = 0,

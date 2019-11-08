@@ -4,18 +4,24 @@ menuconfig DR_COMMON_CONFIGS
 	default y
 
 config DR_NVRAM
-	depends on DR_COMMON_CONFIGS
+	depends on DR_COMMON_CONFIGS && DM_SPI_FLASH
 	bool "DR NVRAM interface"
 	help
 	  Read/write variables in nvram
 	  
 config CMD_DR_NVRAM
-	depends on DR_COMMON_CONFIGS
+	depends on DR_COMMON_CONFIGS && DM_SPI_FLASH
 	select DR_NVRAM
 	bool "DR NVRAM interface CMD"
 	help
 	  Command for interface nvram
 
+config DR_BOOTSPLASH
+	depends on DR_COMMON_CONFIGS && DM_SPI_FLASH && CMD_BMP
+	bool "DR bootsplash from spi"
+	help
+	  Load splash image from spi flash
+	  Shares spi flash config with DR_NVRAM
 	  
 config DR_NVRAM_BUS
 	int "SPI bus for flash"
@@ -40,4 +46,10 @@ config DR_NVRAM_SECTION_B_START
 
 config DR_NVRAM_SECTION_B_SIZE
 	hex "Section b size in flash"
+	
+config DR_BOOTSPLASH_START
+	hex "Bootsplash offset in flash"
+	
+config DR_BOOTSPLASH_SIZE
+	hex "Bootsplash size in flash"
 	
