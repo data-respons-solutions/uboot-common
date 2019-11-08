@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <spi_flash.h>
 #include <lcd.h>
-#include "bootsplash.h"
+#include "../include/bootsplash.h"
 
 static struct udevice* flash = NULL;
 
@@ -32,14 +32,14 @@ int bootsplash_load(void)
 		return r;
 	}
 
-	uint8_t* buf = malloc(CONFIG_DR_BOOTSPLASH_SIZE);
+	uint8_t* buf = malloc(CONFIG_DR_NVRAM_BOOTSPLASH_SIZE);
 	if (!buf) {
-		printf("%s: failed allocating memory: %d bytes\n", __func__, CONFIG_DR_BOOTSPLASH_SIZE);
+		printf("%s: failed allocating memory: %d bytes\n", __func__, CONFIG_DR_NVRAM_BOOTSPLASH_SIZE);
 		r = -ENOMEM;
 		goto exit;
 	}
 
-	r = spi_flash_read_dm(flash, CONFIG_DR_BOOTSPLASH_START, CONFIG_DR_BOOTSPLASH_SIZE, buf);
+	r = spi_flash_read_dm(flash, CONFIG_DR_NVRAM_BOOTSPLASH_START, CONFIG_DR_NVRAM_BOOTSPLASH_SIZE, buf);
 	if (r) {
 		printf("%s: failed reading bootsplash [%d]: %s\n", __func__, -r, errno_str(-r));
 		return r;

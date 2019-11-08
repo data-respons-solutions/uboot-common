@@ -16,7 +16,7 @@ config CMD_DR_NVRAM
 	help
 	  Command for interface nvram
 
-config DR_BOOTSPLASH
+config DR_NVRAM_BOOTSPLASH
 	depends on DR_COMMON_CONFIGS && DM_SPI_FLASH && CMD_BMP
 	bool "DR bootsplash from spi"
 	help
@@ -47,9 +47,9 @@ config DR_NVRAM_SECTION_B_START
 config DR_NVRAM_SECTION_B_SIZE
 	hex "Section b size in flash"
 	
-config DR_BOOTSPLASH_START
+config DR_NVRAM_BOOTSPLASH_START
 	hex "Bootsplash offset in flash"
 	
-config DR_BOOTSPLASH_SIZE
+config DR_NVRAM_BOOTSPLASH_SIZE
 	hex "Bootsplash size in flash"
 	

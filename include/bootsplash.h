@@ -4,8 +4,6 @@
 /**
  * bootsplash_load() - load bootsplash from spi flash
  *
- * Bootsplash image addr set to env "splashimage"
- *
  * @return 0 if ok, -errno on error
  */
 int bootsplash_load(void);

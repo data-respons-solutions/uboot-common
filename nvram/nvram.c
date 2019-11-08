@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <spi_flash.h>
-#include "nvram.h"
+#include "../include/nvram.h"
 #include "../libnvram/libnvram.h"
 
 static struct nvram_data* nvram_priv = NULL;

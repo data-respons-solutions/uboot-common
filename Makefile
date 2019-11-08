@@ -4,5 +4,5 @@ else
 libnvram-y := libnvram/libnvram.o libnvram/crc32.o
 obj-$(CONFIG_DR_NVRAM) += nvram/nvram.o libnvram.o
 obj-$(CONFIG_CMD_DR_NVRAM) += nvram/nvram_cmd.o
-obj-$(CONFIG_DR_BOOTSPLASH) += bootsplash/bootsplash.o
+obj-$(CONFIG_DR_NVRAM_BOOTSPLASH) += nvram/bootsplash.o
 endif
