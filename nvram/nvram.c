@@ -238,7 +238,7 @@ char *nvram_get(const char* varname)
 			return NULL;
 		}
 	}
-	printf("getting: %s\n", varname);
+
 	return nvram_list_get(&nvram_priv->list, varname);
 }
 
