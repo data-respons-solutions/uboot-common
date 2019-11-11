@@ -12,12 +12,12 @@ char *nvram_get(const char* varname);
 /**
  * nvram_get_ulong() - Look up the value of an nvram variable
  *
- * Variable in decimal format, returns default_value if not.
- *
- * @varname:	Variable to look up
- * @return value of variable or default_value if not found
+ * @varname:    Variable to look up
+ * @base:       Base to use (e.g. 10 for base 10, 2 for binary)
+ * @default_val: Default value to return if no value is found
+ * @return the value found, or @default_val if none
  */
-ulong nvram_get_ulong(const char* varname, ulong default_value);
+ulong nvram_get_ulong(const char* varname, int base, ulong default_value);
 
 /**
  * nvram_set() - set an nvram variable
@@ -30,6 +30,17 @@ ulong nvram_get_ulong(const char* varname, ulong default_value);
  * @return 0 if OK, 1 on error
  */
 int nvram_set(const char* varname, const char* value);
+
+/**
+ * nvram_set_env() - set an nvram variable to env
+ *
+ * If varname is empty, return error
+ *
+ * @varname: Variable to copy
+ * @envname: Env variable to write to
+ * @return 0 if OK, 1 on error
+ */
+int nvram_set_env(const char* varname, const char* envname);
 
 /**
  * nvram_commit() - commit nvram variables to flash

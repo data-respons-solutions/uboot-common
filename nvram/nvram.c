@@ -247,16 +247,10 @@ char *nvram_get(const char* varname)
 	return nvram_list_get(&nvram_priv->list, varname);
 }
 
-ulong nvram_get_ulong(const char* varname, ulong default_value)
+ulong nvram_get_ulong(const char* varname, int base, ulong default_value)
 {
-	const char *vstr = nvram_get(varname);
-	ulong value = 0;
-
-	if (str2long(vstr, &value) || !vstr) {
-		return default_value;
-	}
-
-	return value;
+	const char *str = nvram_get(varname);
+	return str ? simple_strtoul(str, NULL, base) : default_value;
 }
 
 int nvram_set(const char* varname, const char* value)
@@ -285,6 +279,12 @@ int nvram_set(const char* varname, const char* value)
 	}
 
 	return 1;
+}
+
+int nvram_set_env(const char* varname, const char* envname)
+{
+	const char* var = nvram_get(varname);
+	return var ? env_set(envname, var) : 1;
 }
 
 int nvram_commit(void)
