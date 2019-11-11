@@ -3,6 +3,7 @@
 #include <asm/mach-imx/hab.h>
 #include <linux/libfdt.h>
 #include "../include/bootsplash.h"
+#include "../include/bootcount.h"
 
 static void select_fdt(void)
 {
@@ -58,9 +59,32 @@ static int start_usb(void)
 }
 #endif
 
+/*
+ * Increment boot counter and return new value
+ */
+__weak int increment_bootcounter(void)
+{
+#if defined(CONFIG_DR_NVRAM_BOOTCOUNT)
+	int r = 0;
+
+	uint32_t counter = nvram_bootcount_load();
+	r = nvram_bootcount_store(counter + 1);
+	if (r) {
+		return r;
+	}
+	return 0;
+#else
+	return -ENODEV;
+#endif
+}
+
 int board_late_init(void)
 {
 	int r = 0;
+
+	if ((r = increment_bootcounter())) {
+		printf("Failed incrementing bootcounter [%d]: %s\n", -r, errno_str(-r));
+	}
 
 #if defined(CONFIG_DR_NVRAM_BOOTSPLASH)
 	printf("Enabling bootsplash...\n");
@@ -68,13 +92,10 @@ int board_late_init(void)
 		printf("Failed loading bootsplash [%d]: %s\n", -r, errno_str(-r));
 	}
 #endif
-
 	select_fdt();
-
 #if defined(CONFIG_CMD_USB)
 	start_usb();
 #endif
-
 #if defined(CONFIG_SECURE_BOOT)
 	if (imx_hab_is_enabled()) {
 		printf("HAB enabled, setting up secure bootscript\n");

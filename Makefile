@@ -6,4 +6,5 @@ obj-$(CONFIG_DR_NVRAM) += nvram/nvram.o libnvram.o
 obj-$(CONFIG_CMD_DR_NVRAM) += nvram/nvram_cmd.o
 obj-$(CONFIG_DR_NVRAM_BOOTSPLASH) += nvram/bootsplash.o
 obj-$(CONFIG_DR_BOARD_LATE_INIT) += common/board_late_init.o
+obj-$(CONFIG_DR_NVRAM_BOOTCOUNT) += nvram/bootcount.o
 endif
