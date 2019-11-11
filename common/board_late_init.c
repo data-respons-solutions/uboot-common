@@ -4,6 +4,7 @@
 #include <linux/libfdt.h>
 #include "../include/bootsplash.h"
 #include "../include/bootcount.h"
+#include "../include/nvram.h"
 
 static void select_fdt(void)
 {
@@ -107,7 +108,12 @@ int board_late_init(void)
 	{
 		printf("HAB disabled, using regular bootscript\n");
 	}
-
-	return 0;
 #endif
+#if defined(CONFIG_DR_NVRAM)
+	r = nvram_commit();
+	if (r) {
+		printf("Failed commiting nvram [%d]: %s\n", -r, errno_str(-r));
+	}
+#endif
+	return 0;
 }
