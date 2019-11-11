@@ -247,6 +247,18 @@ char *nvram_get(const char* varname)
 	return nvram_list_get(&nvram_priv->list, varname);
 }
 
+ulong nvram_get_ulong(const char* varname, ulong default_value)
+{
+	const char *vstr = nvram_get(varname);
+	ulong value = 0;
+
+	if (str2long(vstr, &value) || !vstr) {
+		return default_value;
+	}
+
+	return value;
+}
+
 int nvram_set(const char* varname, const char* value)
 {
 	if (!varname) {

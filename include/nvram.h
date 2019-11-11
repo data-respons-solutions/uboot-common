@@ -7,7 +7,17 @@
  * @varname:	Variable to look up
  * @return value of variable, or NULL if not found
  */
-char *nvram_get(const char *varname);
+char *nvram_get(const char* varname);
+
+/**
+ * nvram_get_ulong() - Look up the value of an nvram variable
+ *
+ * Variable in decimal format, returns default_value if not.
+ *
+ * @varname:	Variable to look up
+ * @return value of variable or default_value if not found
+ */
+ulong nvram_get_ulong(const char* varname, ulong default_value);
 
 /**
  * nvram_set() - set an nvram variable
