@@ -7,6 +7,7 @@
 
 static struct nvram_data* nvram_priv = NULL;
 static struct udevice* flash = NULL;
+static int nvram_updated = 0;
 
 enum flash_section {
 	SECTION_UNKNOWN = 0,
@@ -159,6 +160,7 @@ static int nvram_load(void)
 	}
 
 	r = 0;
+	nvram_updated = 0;
 
 exit:
 	if (_section_a) {
@@ -174,6 +176,9 @@ static int nvram_store(void)
 {
 	if (!nvram_priv) {
 		return -EINVAL;
+	}
+	if (!nvram_updated) {
+		return 0;
 	}
 
 	uint8_t* buf = NULL;
@@ -256,11 +261,13 @@ int nvram_set(const char* varname, const char* value)
 
 	if (!value || !strlen(value)) {
 		if (!nvram_list_remove(&nvram_priv->list, varname)) {
+			nvram_updated = 1;
 			return 0;
 		}
 	}
 	else {
 		if (!nvram_list_set(&nvram_priv->list, varname, value)) {
+			nvram_updated = 1;
 			return 0;
 		}
 	}
