@@ -14,13 +14,5 @@ int nvram_bootcount_store(uint32_t val)
 
 uint32_t nvram_bootcount_load(void)
 {
-	ulong count = 0;
-	char* str = nvram_get("sys_bootcount");
-	if (!str) {
-		return 0;
-	}
-	if (str2long(str, &count)) {
-		return count;
-	}
-	return 0;
+	return nvram_get_ulong("sys_bootcount", 10, 0);
 }
