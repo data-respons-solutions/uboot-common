@@ -266,7 +266,7 @@ int nvram_set(const char* varname, const char* value)
 	}
 
 	if (!value || !strlen(value)) {
-		if (!nvram_list_remove(&nvram_priv->list, varname)) {
+		if (nvram_list_remove(&nvram_priv->list, varname)) {
 			nvram_updated = 1;
 			return 0;
 		}
@@ -279,6 +279,12 @@ int nvram_set(const char* varname, const char* value)
 	}
 
 	return 1;
+}
+
+int nvram_set_ulong(const char* varname, ulong value)
+{
+	char *str = simple_itoa(value);
+	return nvram_set(varname, str);
 }
 
 int nvram_set_env(const char* varname, const char* envname)
