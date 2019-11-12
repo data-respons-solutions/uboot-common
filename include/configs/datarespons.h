@@ -67,17 +67,21 @@
 
 #define BOOT_USB \
 	"echo trying usb boot...;" \
-	"if usb storage; then " \
-		"if part uuid usb ${usbdev}:${usbpart} partuuid; then " \
-			"run setusb;" \
-			"run loadbootscript;" \
-			"run bootscript;" \
-			"echo USB boot failed;" \
+	"if usb start; then " \
+		"if usb storage; then " \
+			"if part uuid usb ${usbdev}:${usbpart} partuuid; then " \
+				"run setusb;" \
+				"run loadbootscript;" \
+				"run bootscript;" \
+				"echo USB boot failed;" \
+			"else " \
+				"echo failed getting usb part uuid;" \
+			"fi;" \
 		"else " \
-			"echo failed getting usb part uuid;" \
+			"echo no usb device available;" \
 		"fi;" \
 	"else " \
-		"echo no usb device available;" \
+		"echo could not start usb;" \
 	"fi;"
 
 #define BOOT_MMC \

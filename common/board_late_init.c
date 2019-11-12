@@ -45,21 +45,6 @@ static void select_fdt(void)
 	printf("%s: no fdt found in platform\n", __func__);
 }
 
-#if defined(CONFIG_CMD_USB)
-static int start_usb(void)
-{
-	unsigned long ticks = 0;
-	int rep = 0;
-
-	char* const start[] = {"usb", "start"};
-	if (cmd_process(0, ARRAY_SIZE(start), start, &rep, &ticks)) {
-		return -EIO;
-	}
-
-	return 0;
-}
-#endif
-
 #if defined(CONFIG_DR_NVRAM_BOOTCOUNT)
 static int increment_bootcounter(void)
 {
@@ -208,9 +193,6 @@ int board_late_init(void)
 	}
 #endif
 	select_fdt();
-#if defined(CONFIG_CMD_USB)
-	start_usb();
-#endif
 #if defined(CONFIG_SECURE_BOOT)
 	if (imx_hab_is_enabled()) {
 		printf("HAB enabled, setting up secure bootscript\n");
