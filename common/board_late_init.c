@@ -60,33 +60,147 @@ static int start_usb(void)
 }
 #endif
 
-/*
- * Increment boot counter and return new value
- */
-__weak int increment_bootcounter(void)
-{
 #if defined(CONFIG_DR_NVRAM_BOOTCOUNT)
-	int r = 0;
-
-	uint32_t counter = nvram_bootcount_load();
-	r = nvram_bootcount_store(counter + 1);
-	if (r) {
-		return r;
-	}
-	return 0;
-#else
-	return -ENODEV;
-#endif
+static int increment_bootcounter(void)
+{
+	ulong counter = nvram_get_ulong("sys_bootcount", 10, 0);
+	return nvram_set_ulong("sys_bootcount", counter +1);
 }
+#endif
+
+#if defined(CONFIG_DR_NVRAM)
+static int nvram_init_env(void)
+{
+	const char* part = nvram_get("sys_boot_part");
+	if (!part) {
+		printf("%s: sys_boot_part: reset to default: \"%s\"\n", __func__, DEFAULT_MMC_PART);
+		if (nvram_set("sys_boot_part", DEFAULT_MMC_PART)) {
+			return -EFAULT;
+		}
+	}
+
+	if (nvram_set_env("sys_boot_part", "mmcpart")) {
+		return -EFAULT;
+	}
+
+	return 0;
+}
+#endif
+
+#if defined(CONFIG_DR_NVRAM_BOOT_SWAP)
+/*
+ * Modes detected during boot:
+ *
+ * x = don't care
+ *
+ * mode        | _verified |  _swap  |     _start       |
+ * normal      |      x    |  _part  |       x          |
+ * init swap   |    true   |  !_part |      NULL        |
+ * swapping    |    false  |  !_part |  < bootcount +3  |
+ * rollback    |    false  |  !_part |    bootcount +3  |
+ * verified    |    true   |  !_part |     !NULL        |
+ *
+ */
+
+static int nvram_boot_swap(void)
+{
+	const char* verified = nvram_get("sys_boot_verified");
+	if (!verified) {
+		printf("%s: sys_boot_verified: reset to default: \"true\"\n", __func__);
+		if (nvram_set("sys_boot_verified", "true")) {
+			return -EFAULT;
+		}
+	}
+	const char* swap = nvram_get("sys_boot_swap");
+	if (!swap) {
+		printf("%s: sys_boot_swap: reset to default: \"%s\"\n", __func__, nvram_get("sys_boot_part"));
+		if (nvram_set("sys_boot_swap", nvram_get("sys_boot_part"))) {
+			return -EFAULT;
+		}
+	}
+
+	if (!strcmp(nvram_get("sys_boot_part"), nvram_get("sys_boot_swap"))) {
+		/* mode normal */
+		printf("%s: verified state\n", __func__);
+		if (strcmp(nvram_get("sys_boot_verified"), "true")) {
+			printf("%s: setting sys_boot_verfied to true\n", __func__);
+			if (nvram_set("sys_boot_verified", "true")) {
+				return -EFAULT;
+			}
+		}
+		return 0;
+	}
+
+	if (!strcmp(nvram_get("sys_boot_verified"), "true")) {
+		if (nvram_get("sys_boot_start")) {
+			/* mode verified */
+			printf("%s: swap successfull\n", __func__);
+			if (nvram_set("sys_boot_part", nvram_get("sys_boot_swap"))) {
+				return -EFAULT;
+			}
+			if (nvram_set("sys_boot_start", NULL)) {
+				return -EFAULT;
+			}
+
+		}
+		else {
+			/* mode init swap */
+			printf("%s: swap initiated\n", __func__);
+			if (nvram_set("sys_boot_start", nvram_get("sys_bootcount"))) {
+				return -EFAULT;
+			}
+			if (nvram_set("sys_boot_verified", "false")) {
+				return -EFAULT;
+			}
+			nvram_set_env("sys_boot_swap", "mmcpart");
+		}
+		return 0;
+	}
+
+	/* mode in progress */
+	const ulong bootcount = nvram_get_ulong("sys_bootcount", 10, 0);
+	const ulong start = nvram_get_ulong("sys_boot_start", 10, 0);
+	const ulong diff = (start < bootcount) ? bootcount - start : CONFIG_DR_NVRAM_BOOT_SWAP_RETRIES;
+	printf("%s: swap in progress: bootcount: %lu\n", __func__, diff);
+	if (diff >= (ulong) CONFIG_DR_NVRAM_BOOT_SWAP_RETRIES) {
+		/* mode rollback */
+		printf("%s: max retries reached (%lu >= %lu): rollback\n", __func__, diff, (ulong) CONFIG_DR_NVRAM_BOOT_SWAP_RETRIES);
+		if (nvram_set("sys_boot_swap", nvram_get("sys_boot_part"))) {
+			return -EFAULT;
+		}
+		if (nvram_set("sys_boot_start", NULL)) {
+			return -EFAULT;
+		}
+		if (nvram_set("sys_boot_verified", "true")) {
+			return -EFAULT;
+		}
+	}
+
+	nvram_set_env("sys_boot_swap", "mmcpart");
+	return 0;
+}
+#endif
 
 int board_late_init(void)
 {
 	int r = 0;
-
+#if defined(CONFIG_DR_NVRAM_BOOTCOUNT)
 	if ((r = increment_bootcounter())) {
 		printf("Failed incrementing bootcounter [%d]: %s\n", -r, errno_str(-r));
 	}
-
+#endif
+#if defined (CONFIG_DR_NVRAM)
+	r = nvram_init_env();
+	if (r) {
+		printf("Failed setting nvram env [%d]: %s\n", -r, errno_str(-r));
+	}
+#if defined (CONFIG_DR_NVRAM_BOOT_SWAP)
+	r = nvram_boot_swap();
+	if (r) {
+		printf("Failed boot swap procedure [%d]: %s\n", -r, errno_str(-r));
+	}
+#endif
+#endif
 #if defined(CONFIG_DR_NVRAM_BOOTSPLASH)
 	printf("Enabling bootsplash...\n");
 	if ((r = bootsplash_load())) {
@@ -115,5 +229,6 @@ int board_late_init(void)
 		printf("Failed commiting nvram [%d]: %s\n", -r, errno_str(-r));
 	}
 #endif
+
 	return 0;
 }
