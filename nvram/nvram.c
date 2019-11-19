@@ -112,22 +112,22 @@ static int nvram_load(void)
 	if (!_section_a) {
 		printf("%s: failed allocating memory (A): %d bytes\n", __func__, CONFIG_DR_NVRAM_SECTION_A_SIZE);
 		r = -ENOMEM;
-		goto exit;
+		goto error_exit;
 	}
 	_section_b = malloc(CONFIG_DR_NVRAM_SECTION_B_SIZE);
 	if (!_section_b) {
 		printf("%s: failed allocating memory (B): %d bytes\n", __func__, CONFIG_DR_NVRAM_SECTION_B_SIZE);
 		r = -ENOMEM;
-		goto exit;
+		goto error_exit;
 	}
 
 	r = read_section(SECTION_A, _section_a);
 	if (r) {
-		goto exit;
+		goto error_exit;
 	}
 	r = read_section(SECTION_B, _section_b);
 	if (r) {
-		goto exit;
+		goto error_exit;
 	}
 	uint32_t counter_a = 0;
 	uint32_t data_len_a = 0;
@@ -146,8 +146,9 @@ static int nvram_load(void)
 		nvram_priv->counter = counter_b;
 	}
 	else {
-		printf("%s: no active section found\n", __func__);
-		r = -EINVAL;
+		printf("%s: no active section found: default to A\n", __func__);
+		nvram_priv->active = SECTION_A;
+		nvram_priv->counter = 0;
 		goto exit;
 	}
 
@@ -156,13 +157,14 @@ static int nvram_load(void)
 									nvram_priv->active == SECTION_A ? data_len_a : data_len_b);
 	if (r) {
 		printf("%s: failed deserializing data [%d]: %s\n", __func__, -r, errno_str(-r));
-		goto exit;
+		goto error_exit;
 	}
 
+exit:
 	r = 0;
 	nvram_updated = 0;
 
-exit:
+error_exit:
 	if (_section_a) {
 		free(_section_a);
 	}
@@ -217,10 +219,11 @@ static int nvram_store(void)
 			goto exit;
 		}
 		break;
-	default:
-		printf("%s: no active setion defined\n", __func__);
-		r = -EBADF;
+	case SECTION_UNKNOWN:
+		printf("%s: no active section\n", __func__);
+		r = -EINVAL;
 		goto exit;
+		break;
 	}
 
 	r = 0;
