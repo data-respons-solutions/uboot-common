@@ -31,7 +31,7 @@ config DR_NVRAM_BOOTCOUNT
 	  Stored in nvram "sys_bootcount".
 
 config DR_NVRAM_BOOT_SWAP
-	depends on DR_COMMON_CONFIGS && DR_NVRAM_BOOTCOUNT
+	depends on DR_COMMON_CONFIGS && DR_NVRAM
 	bool "DR nvram based rootfs swapping"
 	help
 	  Initiating swap is performed by setting "sys_boot_swap"
