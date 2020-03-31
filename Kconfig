@@ -49,33 +49,43 @@ config DR_BOARD_LATE_INIT
  
 config DR_NVRAM_BUS
 	int "SPI bus for flash"
+	default 0
 	
 config DR_NVRAM_CS
 	int "CS for flash"
+	default 0
 	
 config DR_NVRAM_SPEED
 	int "Speed for flash"
+	default 0
 	
 config DR_NVRAM_MODE
 	hex "mode for flash"
+	default 0
 	
 config DR_NVRAM_SECTION_A_START
 	hex "Section a offset in flash"
+	default 0
 
 config DR_NVRAM_SECTION_A_SIZE
 	hex "Section a size in flash"
+	default 0
 	
 config DR_NVRAM_SECTION_B_START
 	hex "Section b offset in flash"
+	default 0
 
 config DR_NVRAM_SECTION_B_SIZE
 	hex "Section b size in flash"
+	default 0
 	
 config DR_NVRAM_BOOTSPLASH_START
 	hex "Bootsplash offset in flash"
+	default 0
 	
 config DR_NVRAM_BOOTSPLASH_SIZE
 	hex "Bootsplash size in flash"
+	default 0
 	
 config DR_NVRAM_BOOT_SWAP_RETRIES
 	int "Max number of retries before rollback"
