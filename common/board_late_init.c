@@ -170,25 +170,25 @@ int board_late_init(void)
 	int r = 0;
 #if defined(CONFIG_DR_NVRAM_BOOTCOUNT)
 	if ((r = increment_bootcounter())) {
-		printf("Failed incrementing bootcounter [%d]: %s\n", -r, errno_str(-r));
+		printf("Failed incrementing bootcounter [%d]: %s\n", r, errno_str(r));
 	}
 #endif
 #if defined (CONFIG_DR_NVRAM)
 	r = nvram_init_env();
 	if (r) {
-		printf("Failed setting nvram env [%d]: %s\n", -r, errno_str(-r));
+		printf("Failed setting nvram env [%d]: %s\n", r, errno_str(r));
 	}
 #if defined (CONFIG_DR_NVRAM_BOOT_SWAP)
 	r = nvram_boot_swap();
 	if (r) {
-		printf("Failed boot swap procedure [%d]: %s\n", -r, errno_str(-r));
+		printf("Failed boot swap procedure [%d]: %s\n", r, errno_str(r));
 	}
 #endif
 #endif
 #if defined(CONFIG_DR_NVRAM_BOOTSPLASH)
 	printf("Enabling bootsplash...\n");
 	if ((r = bootsplash_load())) {
-		printf("Failed loading bootsplash [%d]: %s\n", -r, errno_str(-r));
+		printf("Failed loading bootsplash [%d]: %s\n", r, errno_str(r));
 	}
 #endif
 	select_fdt();
@@ -207,7 +207,7 @@ int board_late_init(void)
 #if defined(CONFIG_DR_NVRAM)
 	r = nvram_commit();
 	if (r) {
-		printf("Failed commiting nvram [%d]: %s\n", -r, errno_str(-r));
+		printf("Failed commiting nvram [%d]: %s\n", r, errno_str(r));
 	}
 #endif
 

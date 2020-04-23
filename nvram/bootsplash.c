@@ -15,7 +15,7 @@ static int probe_flash(void)
 									CONFIG_DR_NVRAM_SPEED, CONFIG_DR_NVRAM_MODE,
 									&flash);
 		if (r) {
-			printf("%s: failed probing bootsplash [%d]: %s\n", __func__, -r, errno_str(-r));
+			printf("%s: failed probing bootsplash [%d]: %s\n", __func__, r, errno_str(r));
 			return r;
 		}
 	}
@@ -41,7 +41,7 @@ int bootsplash_load(void)
 
 	r = spi_flash_read_dm(flash, CONFIG_DR_NVRAM_BOOTSPLASH_START, CONFIG_DR_NVRAM_BOOTSPLASH_SIZE, buf);
 	if (r) {
-		printf("%s: failed reading bootsplash [%d]: %s\n", __func__, -r, errno_str(-r));
+		printf("%s: failed reading bootsplash [%d]: %s\n", __func__, r, errno_str(r));
 		return r;
 	}
 

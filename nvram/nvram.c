@@ -28,7 +28,7 @@ static int probe_flash(void)
 									CONFIG_DR_NVRAM_SPEED, CONFIG_DR_NVRAM_MODE,
 									&flash);
 		if (r) {
-			printf("%s: failed probing nvram [%d]: %s\n", __func__, -r, errno_str(-r));
+			printf("%s: failed probing nvram [%d]: %s\n", __func__, r, errno_str(r));
 			return r;
 		}
 	}
@@ -49,7 +49,7 @@ static int read_section(enum flash_section section, uint8_t* buf)
 	const uint32_t flash_size = section == SECTION_A ? CONFIG_DR_NVRAM_SECTION_A_SIZE : CONFIG_DR_NVRAM_SECTION_B_SIZE;
 	r = spi_flash_read_dm(flash, flash_offset, flash_size, buf);
 	if (r) {
-		printf("%s: failed reading nvram [%d]: %s\n", __func__, -r, errno_str(-r));
+		printf("%s: failed reading nvram [%d]: %s\n", __func__, r, errno_str(r));
 		return r;
 	}
 
@@ -74,13 +74,13 @@ static int write_section(enum flash_section section, const uint8_t* buf, uint32_
 
 	r = spi_flash_erase_dm(flash, flash_offset, flash_size);
 	if (r) {
-		printf("%s: failed erasing nvram [%d]: %s\n", __func__, -r, errno_str(-r));
+		printf("%s: failed erasing nvram [%d]: %s\n", __func__, r, errno_str(r));
 		return r;
 	}
 
 	r = spi_flash_write_dm(flash, flash_offset, buf_len, buf);
 	if (r) {
-		printf("%s: failed writing nvram [%d]: %s\n", __func__, -r, errno_str(-r));
+		printf("%s: failed writing nvram [%d]: %s\n", __func__, r, errno_str(r));
 		return r;
 	}
 
@@ -156,7 +156,7 @@ static int nvram_load(void)
 									nvram_priv->active == SECTION_A ? _section_a : _section_b,
 									nvram_priv->active == SECTION_A ? data_len_a : data_len_b);
 	if (r) {
-		printf("%s: failed deserializing data [%d]: %s\n", __func__, -r, errno_str(-r));
+		printf("%s: failed deserializing data [%d]: %s\n", __func__, r, errno_str(r));
 		goto error_exit;
 	}
 
@@ -189,7 +189,7 @@ static int nvram_store(void)
 	uint32_t size = 0;
 	r = nvram_section_serialize_size(&nvram_priv->list, &size);
 	if (r) {
-		printf("%s: failed getting serialized buffer size [%d]: %s\n", __func__, -r, errno_str(-r));
+		printf("%s: failed getting serialized buffer size [%d]: %s\n", __func__, r, errno_str(r));
 		goto exit;
 	}
 
@@ -202,7 +202,7 @@ static int nvram_store(void)
 
 	r = nvram_section_serialize(&nvram_priv->list, nvram_priv->counter + 1, buf, size);
 	if (r) {
-		printf("%s: failed serializing data [%d]: %s\n", __func__, -r, errno_str(-r));
+		printf("%s: failed serializing data [%d]: %s\n", __func__, r, errno_str(r));
 		goto exit;
 	}
 
