@@ -256,9 +256,26 @@ ulong nvram_get_ulong(const char* varname, int base, ulong default_value)
 	return str ? simple_strtoul(str, NULL, base) : default_value;
 }
 
+static int starts_with(const char* str, const char* prefix)
+{
+	size_t str_len = strlen(str);
+	size_t prefix_len = strlen(prefix);
+	if (str_len > prefix_len) {
+		if(!strncmp(str, prefix, prefix_len)) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
 int nvram_set(const char* varname, const char* value)
 {
 	if (!varname) {
+		return 1;
+	}
+
+	if (!starts_with(varname, CONFIG_DR_NVRAM_VARIABLE_PREFIX)) {
+		printf("%s: varname not prefixed with %s\n", __func__, CONFIG_DR_NVRAM_VARIABLE_PREFIX);
 		return 1;
 	}
 

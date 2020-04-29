@@ -28,18 +28,18 @@ config DR_NVRAM_BOOTCOUNT
 	bool "DR nvram based bootcounter"
 	help
 	  Bootcounter variable support in spi flash
-	  Stored in nvram "sys_bootcount".
+	  Stored in nvram DR_NVRAM_VARIABLE_BOOTCOUNT.
 
 config DR_NVRAM_BOOT_SWAP
 	depends on DR_COMMON_CONFIGS && DR_NVRAM
 	bool "DR nvram based rootfs swapping"
 	help
-	  Initiating swap is performed by setting "sys_boot_swap"
+	  Initiating swap is performed by setting DR_NVRAM_VARIABLE_BOOT_SWAP
 	  to partition number of new boot device.
 	  When successfully booted to new partition, set
-	  "sys_boot_verfied" to "true" to confirm successfull swap.
+	  DR_NVRAM_VARIABLE_BOOT_VERIFIED to "true" to confirm successfull swap.
 	  Number of retries before rollback defined by 
-	  CONFIG_DR_NVRAM_BOOT_SWAP_RETRIES.
+	  DR_NVRAM_BOOT_SWAP_RETRIES.
 
 config DR_BOARD_LATE_INIT
 	depends on DR_COMMON_CONFIGS && BOARD_LATE_INIT
@@ -90,3 +90,28 @@ config DR_NVRAM_BOOTSPLASH_SIZE
 config DR_NVRAM_BOOT_SWAP_RETRIES
 	int "Max number of retries before rollback"
 	default 3
+	
+config DR_NVRAM_VARIABLE_PREFIX
+	string "Mandatory prefix for nvram variables"
+	default "SYS_"
+	
+config DR_NVRAM_VARIABLE_BOOT_PART
+	string "Boot partition variable. Will be prefixed with DR_NVRAM_VARIABLE_PREFIX"
+	default "BOOT_PART"
+	
+config DR_NVRAM_VARIABLE_BOOT_SWAP
+	string "Boot swap variable. Will be prefixed with DR_NVRAM_VARIABLE_PREFIX"
+	default "BOOT_SWAP"
+	
+config DR_NVRAM_VARIABLE_BOOT_VERIFIED
+	string "Boot verified variable. Will be prefixed with DR_NVRAM_VARIABLE_PREFIX"
+	default "BOOT_VERIFIED"
+	
+config DR_NVRAM_VARIABLE_BOOT_RETRIES
+	string "Boot retries variable. Will be prefixed with DR_NVRAM_VARIABLE_PREFIX"
+	default "BOOT_RETRIES"
+	
+config DR_NVRAM_VARIABLE_BOOTCOUNT
+	string "Bootcount variable. Will be prefixed with DR_NVRAM_VARIABLE_PREFIX"
+	default "BOOTCOUNT"
+	

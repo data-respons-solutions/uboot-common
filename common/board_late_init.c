@@ -6,6 +6,12 @@
 #include "../include/bootcount.h"
 #include "../include/nvram.h"
 
+static const char* VAR_BOOT_PART = CONFIG_DR_NVRAM_VARIABLE_PREFIX "" CONFIG_DR_NVRAM_VARIABLE_BOOT_PART;
+static const char* VAR_BOOT_SWAP = CONFIG_DR_NVRAM_VARIABLE_PREFIX "" CONFIG_DR_NVRAM_VARIABLE_BOOT_SWAP;
+static const char* VAR_BOOT_VERIFIED = CONFIG_DR_NVRAM_VARIABLE_PREFIX "" CONFIG_DR_NVRAM_VARIABLE_BOOT_VERIFIED;
+static const char* VAR_BOOT_RETRIES = CONFIG_DR_NVRAM_VARIABLE_PREFIX "" CONFIG_DR_NVRAM_VARIABLE_BOOT_RETRIES;
+static const char* VAR_BOOT_BOOTCOUNT = CONFIG_DR_NVRAM_VARIABLE_PREFIX "" CONFIG_DR_NVRAM_VARIABLE_BOOTCOUNT;
+
 static void select_fdt(void)
 {
 	void* fdt_addr = (void*) env_get_hex("fdt_addr", 0);
@@ -48,23 +54,23 @@ static void select_fdt(void)
 #if defined(CONFIG_DR_NVRAM_BOOTCOUNT)
 static int increment_bootcounter(void)
 {
-	ulong counter = nvram_get_ulong("sys_bootcount", 10, 0);
-	return nvram_set_ulong("sys_bootcount", counter +1);
+	ulong counter = nvram_get_ulong(VAR_BOOT_BOOTCOUNT, 10, 0);
+	return nvram_set_ulong(VAR_BOOT_BOOTCOUNT, counter +1);
 }
 #endif
 
 #if defined(CONFIG_DR_NVRAM)
 static int nvram_init_env(void)
 {
-	const char* part = nvram_get("sys_boot_part");
+	const char* part = nvram_get(VAR_BOOT_PART);
 	if (!part) {
-		printf("%s: sys_boot_part: reset to default: \"%s\"\n", __func__, DEFAULT_MMC_PART);
-		if (nvram_set("sys_boot_part", DEFAULT_MMC_PART)) {
+		printf("%s: %s: reset to default: \"%s\"\n", __func__, VAR_BOOT_PART, DEFAULT_MMC_PART);
+		if (nvram_set(VAR_BOOT_PART, DEFAULT_MMC_PART)) {
 			return -EFAULT;
 		}
 	}
 
-	if (nvram_set_env("sys_boot_part", "mmcpart")) {
+	if (nvram_set_env(VAR_BOOT_PART, "mmcpart")) {
 		return -EFAULT;
 	}
 
@@ -89,78 +95,78 @@ static int nvram_init_env(void)
 
 static int nvram_boot_swap(void)
 {
-	const char* verified = nvram_get("sys_boot_verified");
+	const char* verified = nvram_get(VAR_BOOT_VERIFIED);
 	if (!verified) {
-		printf("%s: sys_boot_verified: reset to default: \"true\"\n", __func__);
-		if (nvram_set("sys_boot_verified", "true")) {
+		printf("%s: %s: reset to default: \"true\"\n", __func__, VAR_BOOT_VERIFIED);
+		if (nvram_set(VAR_BOOT_VERIFIED, "true")) {
 			return -EFAULT;
 		}
 	}
-	const char* swap = nvram_get("sys_boot_swap");
+	const char* swap = nvram_get(VAR_BOOT_SWAP);
 	if (!swap) {
-		printf("%s: sys_boot_swap: reset to default: \"%s\"\n", __func__, nvram_get("sys_boot_part"));
-		if (nvram_set("sys_boot_swap", nvram_get("sys_boot_part"))) {
+		printf("%s: %s: reset to default: \"%s\"\n", __func__, VAR_BOOT_SWAP, nvram_get(VAR_BOOT_PART));
+		if (nvram_set(VAR_BOOT_SWAP, nvram_get(VAR_BOOT_PART))) {
 			return -EFAULT;
 		}
 	}
 
-	if (!strcmp(nvram_get("sys_boot_part"), nvram_get("sys_boot_swap"))) {
+	if (!strcmp(nvram_get(VAR_BOOT_PART), nvram_get(VAR_BOOT_SWAP))) {
 		/* mode normal */
-		printf("%s: verified state: p%s\n", __func__, nvram_get("sys_boot_part"));
-		if (strcmp(nvram_get("sys_boot_verified"), "true")) {
-			printf("%s: setting sys_boot_verfied to true\n", __func__);
-			if (nvram_set("sys_boot_verified", "true")) {
+		printf("%s: verified state: p%s\n", __func__, nvram_get(VAR_BOOT_PART));
+		if (strcmp(nvram_get(VAR_BOOT_VERIFIED), "true")) {
+			printf("%s: setting %s to true\n", __func__, VAR_BOOT_VERIFIED);
+			if (nvram_set(VAR_BOOT_VERIFIED, "true")) {
 				return -EFAULT;
 			}
 		}
 		return 0;
 	}
 
-	if (!strcmp(nvram_get("sys_boot_verified"), "true")) {
-		if (nvram_get("sys_boot_retries")) {
+	if (!strcmp(nvram_get(VAR_BOOT_VERIFIED), "true")) {
+		if (nvram_get(VAR_BOOT_RETRIES)) {
 			/* mode verified */
-			printf("%s: swap from p%s to p%s successful\n", __func__, nvram_get("sys_boot_part"), nvram_get("sys_boot_swap"));
-			if (nvram_set("sys_boot_part", nvram_get("sys_boot_swap"))) {
+			printf("%s: swap from p%s to p%s successful\n", __func__, nvram_get(VAR_BOOT_PART), nvram_get(VAR_BOOT_SWAP));
+			if (nvram_set(VAR_BOOT_PART, nvram_get(VAR_BOOT_SWAP))) {
 				return -EFAULT;
 			}
-			if (nvram_set("sys_boot_retries", NULL)) {
+			if (nvram_set(VAR_BOOT_RETRIES, NULL)) {
 				return -EFAULT;
 			}
 
 		}
 		else {
 			/* mode init swap */
-			printf("%s: swap initiated: p%s -> p%s\n", __func__, nvram_get("sys_boot_part"), nvram_get("sys_boot_swap"));
-			if (nvram_set_ulong("sys_boot_retries", 0)) {
+			printf("%s: swap initiated: p%s -> p%s\n", __func__, nvram_get(VAR_BOOT_PART), nvram_get(VAR_BOOT_SWAP));
+			if (nvram_set_ulong(VAR_BOOT_RETRIES, 0)) {
 				return -EFAULT;
 			}
-			if (nvram_set("sys_boot_verified", "false")) {
+			if (nvram_set(VAR_BOOT_VERIFIED, "false")) {
 				return -EFAULT;
 			}
-			nvram_set_env("sys_boot_swap", "mmcpart");
+			nvram_set_env(VAR_BOOT_SWAP, "mmcpart");
 		}
 		return 0;
 	}
 
 	/* mode in progress */
-	const ulong retries = nvram_get_ulong("sys_boot_retries", 10, 0) + 1;
-	nvram_set_ulong("sys_boot_retries", retries);
-	printf("%s: swap from p%s to p%s in progress: retries: %lu\n", __func__, nvram_get("sys_boot_part"), nvram_get("sys_boot_swap"), retries);
+	const ulong retries = nvram_get_ulong(VAR_BOOT_RETRIES, 10, 0) + 1;
+	nvram_set_ulong(VAR_BOOT_RETRIES, retries);
+	printf("%s: swap from p%s to p%s in progress: retries: %lu\n", __func__, nvram_get(VAR_BOOT_PART), nvram_get(VAR_BOOT_SWAP), retries);
 	if (retries >= (ulong) CONFIG_DR_NVRAM_BOOT_SWAP_RETRIES) {
 		/* mode rollback */
 		printf("%s: max retries reached (%lu >= %lu): rollback\n", __func__, retries, (ulong) CONFIG_DR_NVRAM_BOOT_SWAP_RETRIES);
-		if (nvram_set("sys_boot_swap", nvram_get("sys_boot_part"))) {
+		if (nvram_set(VAR_BOOT_SWAP, nvram_get(VAR_BOOT_PART))) {
 			return -EFAULT;
 		}
-		if (nvram_set("sys_boot_retries", NULL)) {
+		if (nvram_set(VAR_BOOT_RETRIES, NULL)) {
 			return -EFAULT;
 		}
-		if (nvram_set("sys_boot_verified", "true")) {
+		if (nvram_set(VAR_BOOT_VERIFIED, "true")) {
 			return -EFAULT;
 		}
 	}
 
-	nvram_set_env("sys_boot_swap", "mmcpart");
+	nvram_set_env(VAR_BOOT_SWAP, "mmcpart");
 	return 0;
 }
 #endif
