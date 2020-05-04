@@ -61,7 +61,6 @@
 
 #define BOOT_PRELOADED \
 	"echo trying preloaded boot...;" \
-	"run setpreloaded;" \
 	"bootz ${loadaddr} ${initrd_addr} ${fdt_addr};" \
 	"echo    no preloaded image;"
 
@@ -141,7 +140,6 @@
 	"fdt_high=0xffffffff\0" \
 	__MMC_ENVIRONMENT \
 	__USB_ENVIRONMENT \
-	"setpreloaded=setenv bootargs rdinit=/linuxrc enable_wait_mode=off \0" \
 	"setargs=setenv bootargs root=${rootdev} rootwait ro rootfstype=ext4 consoleblank=${consoleblank} loglevel=${loglevel}\0" \
 	"loadimage=ext4load ${bootfrom} ${bootdev}:${bootpart} ${loadaddr} ${zimage}; \0" \
 	"loadinitrd=ext4load ${bootfrom} ${bootdev}:${bootpart} ${initrd_addr} ${initrd_file}; \0" \
