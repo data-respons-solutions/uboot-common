@@ -3,14 +3,12 @@
 #include <asm/mach-imx/hab.h>
 #include <linux/libfdt.h>
 #include "../include/bootsplash.h"
-#include "../include/bootcount.h"
 #include "../include/nvram.h"
 
 static const char* VAR_BOOT_PART = CONFIG_DR_NVRAM_VARIABLE_PREFIX "" CONFIG_DR_NVRAM_VARIABLE_BOOT_PART;
 static const char* VAR_BOOT_SWAP = CONFIG_DR_NVRAM_VARIABLE_PREFIX "" CONFIG_DR_NVRAM_VARIABLE_BOOT_SWAP;
 static const char* VAR_BOOT_VERIFIED = CONFIG_DR_NVRAM_VARIABLE_PREFIX "" CONFIG_DR_NVRAM_VARIABLE_BOOT_VERIFIED;
 static const char* VAR_BOOT_RETRIES = CONFIG_DR_NVRAM_VARIABLE_PREFIX "" CONFIG_DR_NVRAM_VARIABLE_BOOT_RETRIES;
-static const char* VAR_BOOT_BOOTCOUNT = CONFIG_DR_NVRAM_VARIABLE_PREFIX "" CONFIG_DR_NVRAM_VARIABLE_BOOTCOUNT;
 
 static void select_fdt(void)
 {
@@ -50,14 +48,6 @@ static void select_fdt(void)
 #endif
 	printf("%s: no fdt found in platform\n", __func__);
 }
-
-#if defined(CONFIG_DR_NVRAM_BOOTCOUNT)
-static int increment_bootcounter(void)
-{
-	ulong counter = nvram_get_ulong(VAR_BOOT_BOOTCOUNT, 10, 0);
-	return nvram_set_ulong(VAR_BOOT_BOOTCOUNT, counter +1);
-}
-#endif
 
 #if defined(CONFIG_DR_NVRAM)
 static int nvram_init_env(void)
@@ -173,12 +163,6 @@ static int nvram_boot_swap(void)
 
 int board_late_init(void)
 {
-	int r = 0;
-#if defined(CONFIG_DR_NVRAM_BOOTCOUNT)
-	if ((r = increment_bootcounter())) {
-		printf("Failed incrementing bootcounter [%d]: %s\n", r, errno_str(r));
-	}
-#endif
 #if defined (CONFIG_DR_NVRAM)
 	r = nvram_init_env();
 	if (r) {
