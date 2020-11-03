@@ -163,17 +163,28 @@ static int nvram_boot_swap(void)
 
 int board_late_init(void)
 {
+	int r = 0;
 #if defined (CONFIG_DR_NVRAM)
-	r = nvram_init_env();
+	r = nvram_init();
 	if (r) {
-		printf("Failed setting nvram env [%d]: %s\n", r, errno_str(r));
+		printf("Failed nvram_init [%d]: %s\n", r, errno_str(r));
 	}
+	else {
+		r = nvram_init_env();
+		if (r) {
+			printf("Failed setting nvram env [%d]: %s\n", r, errno_str(r));
+		}
 #if defined (CONFIG_DR_NVRAM_BOOT_SWAP)
-	r = nvram_boot_swap();
-	if (r) {
-		printf("Failed boot swap procedure [%d]: %s\n", r, errno_str(r));
-	}
+		r = nvram_boot_swap();
+		if (r) {
+			printf("Failed boot swap procedure [%d]: %s\n", r, errno_str(r));
+		}
 #endif
+		r = nvram_commit();
+		if (r) {
+			printf("Failed commiting nvram [%d]: %s\n", r, errno_str(r));
+		}
+	}
 #endif
 #if defined(CONFIG_DR_NVRAM_BOOTSPLASH)
 	printf("Enabling bootsplash...\n");
@@ -192,12 +203,6 @@ int board_late_init(void)
 	else
 	{
 		printf("HAB disabled, using regular bootscript\n");
-	}
-#endif
-#if defined(CONFIG_DR_NVRAM)
-	r = nvram_commit();
-	if (r) {
-		printf("Failed commiting nvram [%d]: %s\n", r, errno_str(r));
 	}
 #endif
 

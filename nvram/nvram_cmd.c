@@ -22,14 +22,8 @@ static int do_nvram(cmd_tbl_t *cmdtp, int flag, int argc,
 	}
 	else
 	if (strncmp(argv[1], "list", 4) == 0) {
-		struct nvram_list* list = nvram_get_list();
-		if (!list) {
-			return CMD_RET_FAILURE;
-		}
-		struct nvram_node* cur = list->entry;
-		while(cur) {
-			printf("%s = %s\n", cur->key, cur->value);
-			cur = cur->next;
+		for (struct nvram_list* cur = nvram_get_list(); cur; cur = cur->next) {
+			printf("%s = %s\n", (char*) cur->entry->key, (char*) cur->entry->value);
 		}
 	}
 	else

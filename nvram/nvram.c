@@ -2,83 +2,132 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <spi_flash.h>
+#include <inttypes.h>
 #include "../include/nvram.h"
 #include "../libnvram/libnvram.h"
 
-static struct nvram_data* nvram_priv = NULL;
-static struct udevice* flash = NULL;
-static int nvram_updated = 0;
+static struct nvram* nvram = NULL;
 
-enum flash_section {
-	SECTION_UNKNOWN = 0,
-	SECTION_A,
-	SECTION_B,
+struct nvram {
+	struct udevice *flash;
+	struct nvram_transaction trans;
+	struct nvram_list *list;
+	int list_updated;
 };
 
-struct nvram_data {
-	enum flash_section active;
-	uint32_t counter;
-	struct nvram_list list;
-};
-
-static int probe_flash(void)
+static int probe_flash(struct udevice** flash)
 {
-	if (!flash) {
-		int r = spi_flash_probe_bus_cs(CONFIG_DR_NVRAM_BUS, CONFIG_DR_NVRAM_CS,
-									CONFIG_DR_NVRAM_SPEED, CONFIG_DR_NVRAM_MODE,
-									&flash);
-		if (r) {
-			printf("%s: failed probing nvram [%d]: %s\n", __func__, r, errno_str(r));
-			return r;
-		}
+	int r = spi_flash_probe_bus_cs(CONFIG_DR_NVRAM_BUS, CONFIG_DR_NVRAM_CS,
+								CONFIG_DR_NVRAM_SPEED, CONFIG_DR_NVRAM_MODE,
+								flash);
+	if (r) {
+		printf("%s: failed probing nvram [%d]: %s\n", __func__, r, errno_str(r));
+		return r;
 	}
 
 	return 0;
 }
 
-static int read_section(enum flash_section section, uint8_t* buf)
+static int read_section(struct udevice* flash, uint32_t offset, uint8_t** data, uint32_t len)
 {
-	int r = 0;
-
-	r = probe_flash();
-	if (r) {
-		return r;
+	uint8_t *buf = malloc(len);
+	if (!buf) {
+		printf("%s: failed allocating memory: %u bytes\n", __func__, len);
+		return -ENOMEM;
 	}
-
-	const uint32_t flash_offset = section == SECTION_A ? CONFIG_DR_NVRAM_SECTION_A_START : CONFIG_DR_NVRAM_SECTION_B_START;
-	const uint32_t flash_size = section == SECTION_A ? CONFIG_DR_NVRAM_SECTION_A_SIZE : CONFIG_DR_NVRAM_SECTION_B_SIZE;
-	r = spi_flash_read_dm(flash, flash_offset, flash_size, buf);
+	int r = spi_flash_read_dm(flash, offset, len, buf);
 	if (r) {
+		free(buf);
 		printf("%s: failed reading nvram [%d]: %s\n", __func__, r, errno_str(r));
 		return r;
 	}
+	*data = buf;
 
 	return 0;
 }
 
-static int write_section(enum flash_section section, const uint8_t* buf, uint32_t buf_len)
+static const char* nvram_active_str(enum nvram_active active)
 {
-	int r = 0;
+	switch (active) {
+	case NVRAM_ACTIVE_A:
+		return "A";
+	case NVRAM_ACTIVE_B:
+		return "B";
+	default:
+		return "NONE";
+	}
+}
 
-	r = probe_flash();
+int nvram_init(void)
+{
+	if (nvram) {
+		return -EALREADY;
+	}
+
+	uint8_t *buf_a = NULL;
+	uint8_t *buf_b = NULL;
+	nvram = (struct nvram*) malloc(sizeof(struct nvram));
+	if (!nvram) {
+		return ENOMEM;
+	}
+	memset(nvram, 0, sizeof(struct nvram));
+
+	int r = probe_flash(&nvram->flash);
 	if (r) {
 		return r;
 	}
 
-	const uint32_t flash_offset = section == SECTION_A ? CONFIG_DR_NVRAM_SECTION_A_START : CONFIG_DR_NVRAM_SECTION_B_START;
-	const uint32_t flash_size = section == SECTION_A ? CONFIG_DR_NVRAM_SECTION_A_SIZE : CONFIG_DR_NVRAM_SECTION_B_SIZE;
-	if (buf_len > flash_size) {
-		printf("%s: buffer [%ub] larger than flash [%ub]\n", __func__, buf_len, flash_size);
-		return -EINVAL;
+	r = read_section(nvram->flash, CONFIG_DR_NVRAM_SECTION_A_START, &buf_a, CONFIG_DR_NVRAM_SECTION_A_SIZE);
+	if (r) {
+		goto exit;
+	}
+	r = read_section(nvram->flash, CONFIG_DR_NVRAM_SECTION_B_START, &buf_b, CONFIG_DR_NVRAM_SECTION_B_SIZE);
+	if (r) {
+		goto exit;
 	}
 
-	r = spi_flash_erase_dm(flash, flash_offset, flash_size);
+	nvram_init_transaction(&nvram->trans, buf_a, CONFIG_DR_NVRAM_SECTION_A_SIZE, buf_b, CONFIG_DR_NVRAM_SECTION_B_SIZE);
+	printf("nvram: active: %s\n", nvram_active_str(nvram->trans.active));
+	r = 0;
+	if ((nvram->trans.active & NVRAM_ACTIVE_A) == NVRAM_ACTIVE_A) {
+		r = nvram_deserialize(&nvram->list, buf_a + nvram_header_len(), CONFIG_DR_NVRAM_SECTION_A_SIZE - nvram_header_len(), &nvram->trans.section_a.hdr);
+	}
+	else
+	if ((nvram->trans.active & NVRAM_ACTIVE_B) == NVRAM_ACTIVE_B) {
+		r = nvram_deserialize(&nvram->list, buf_b + nvram_header_len(), CONFIG_DR_NVRAM_SECTION_B_SIZE - nvram_header_len(), &nvram->trans.section_b.hdr);
+	}
+
+	if (r) {
+		printf("failed deserializing data [%d]: %s\n", -r, errno_str(r));
+		goto exit;
+	}
+
+	r = 0;
+exit:
+	if (buf_a) {
+		free(buf_a);
+	}
+	if (buf_b) {
+		free(buf_b);
+	}
+	if (r) {
+		if (nvram) {
+			free(nvram);
+			nvram = NULL;
+		}
+	}
+	return r;
+}
+
+static int write_section(struct udevice* flash, uint32_t offset, const uint8_t* data, uint32_t len)
+{
+	int r = spi_flash_erase_dm(flash, offset, len);
 	if (r) {
 		printf("%s: failed erasing nvram [%d]: %s\n", __func__, r, errno_str(r));
 		return r;
 	}
 
-	r = spi_flash_write_dm(flash, flash_offset, buf_len, buf);
+	r = spi_flash_write_dm(flash, offset, len, data);
 	if (r) {
 		printf("%s: failed writing nvram [%d]: %s\n", __func__, r, errno_str(r));
 		return r;
@@ -87,147 +136,65 @@ static int write_section(enum flash_section section, const uint8_t* buf, uint32_
 	return 0;
 }
 
-static int nvram_load(void)
+int nvram_commit(void)
 {
-	if (nvram_priv) {
-		printf("%s: nvram already loaded\n", __func__);
-		return -EINVAL;
+	if (!nvram) {
+		return -ENXIO;
 	}
-
-	nvram_priv = malloc(sizeof(struct nvram_data));
-	if (!nvram_priv) {
-		printf("%s: failed allocating memory for priv data\n", __func__);
-		return -ENOMEM;
-	}
-
-	nvram_priv->counter = 0;
-	nvram_priv->active = SECTION_UNKNOWN;
-	nvram_priv->list.entry = NULL;
-
-	int r = 0;
-	uint8_t* _section_a = NULL;
-	uint8_t* _section_b = NULL;
-
-	_section_a = malloc(CONFIG_DR_NVRAM_SECTION_A_SIZE);
-	if (!_section_a) {
-		printf("%s: failed allocating memory (A): %d bytes\n", __func__, CONFIG_DR_NVRAM_SECTION_A_SIZE);
-		r = -ENOMEM;
-		goto error_exit;
-	}
-	_section_b = malloc(CONFIG_DR_NVRAM_SECTION_B_SIZE);
-	if (!_section_b) {
-		printf("%s: failed allocating memory (B): %d bytes\n", __func__, CONFIG_DR_NVRAM_SECTION_B_SIZE);
-		r = -ENOMEM;
-		goto error_exit;
-	}
-
-	r = read_section(SECTION_A, _section_a);
-	if (r) {
-		goto error_exit;
-	}
-	r = read_section(SECTION_B, _section_b);
-	if (r) {
-		goto error_exit;
-	}
-	uint32_t counter_a = 0;
-	uint32_t data_len_a = 0;
-	int is_valid_a = is_valid_nvram_section(_section_a, CONFIG_DR_NVRAM_SECTION_A_SIZE, &data_len_a, &counter_a);
-	uint32_t counter_b = 0;
-	uint32_t data_len_b = 0;
-	int is_valid_b = is_valid_nvram_section(_section_b, CONFIG_DR_NVRAM_SECTION_B_SIZE, &data_len_b, &counter_b);
-
-	if (is_valid_a && (counter_a > counter_b)) {
-		nvram_priv->active = SECTION_A;
-		nvram_priv->counter = counter_a;
-	}
-	else
-	if (is_valid_b) {
-		nvram_priv->active = SECTION_B;
-		nvram_priv->counter = counter_b;
-	}
-	else {
-		printf("%s: no active section found: default to A\n", __func__);
-		nvram_priv->active = SECTION_A;
-		nvram_priv->counter = 0;
-		goto exit;
-	}
-
-	r = nvram_section_deserialize(&nvram_priv->list,
-									nvram_priv->active == SECTION_A ? _section_a : _section_b,
-									nvram_priv->active == SECTION_A ? data_len_a : data_len_b);
-	if (r) {
-		printf("%s: failed deserializing data [%d]: %s\n", __func__, r, errno_str(r));
-		goto error_exit;
-	}
-
-exit:
-	r = 0;
-	nvram_updated = 0;
-
-error_exit:
-	if (_section_a) {
-		free(_section_a);
-	}
-	if (_section_b) {
-		free(_section_b);
-	}
-	return r;
-}
-
-static int nvram_store(void)
-{
-	if (!nvram_priv) {
-		return -EINVAL;
-	}
-	if (!nvram_updated) {
+	if (!nvram->list_updated) {
 		return 0;
 	}
 
-	uint8_t* buf = NULL;
+	uint8_t *buf = NULL;
 	int r = 0;
-
-	uint32_t size = 0;
-	r = nvram_section_serialize_size(&nvram_priv->list, &size);
-	if (r) {
-		printf("%s: failed getting serialized buffer size [%d]: %s\n", __func__, r, errno_str(r));
-		goto exit;
+	uint32_t size = nvram_serialize_size(nvram->list);
+	if (size > CONFIG_DR_NVRAM_SECTION_A_SIZE || size > CONFIG_DR_NVRAM_SECTION_B_SIZE) {
+		printf("nvram: serialied size does not fit in flash");
+		return -EFBIG;
 	}
 
-	buf = malloc(size);
+	buf = (uint8_t*) malloc(size);
 	if (!buf) {
-		printf("%s: failed allocating memory: %u bytes\n", __func__, size);
+		printf("failed allocating %" PRIu32 " byte write buffer\n", size);
+		return -ENOMEM;
+	}
+
+	struct nvram_header hdr;
+	enum nvram_operation op = nvram_next_transaction(&nvram->trans, &hdr);
+	uint32_t bytes = nvram_serialize(nvram->list, buf, size, &hdr);
+	if (!bytes) {
+		printf("nvram: failed serializing list\n");
 		r = -ENOMEM;
 		goto exit;
 	}
 
-	r = nvram_section_serialize(&nvram_priv->list, nvram_priv->counter + 1, buf, size);
+	const int is_write_a = (op & NVRAM_OPERATION_WRITE_A) == NVRAM_OPERATION_WRITE_A;
+	const int is_counter_reset = (op & NVRAM_OPERATION_COUNTER_RESET) == NVRAM_OPERATION_COUNTER_RESET;
+	// first write
+	if (is_write_a) {
+		r = write_section(nvram->flash, CONFIG_DR_NVRAM_SECTION_A_START, buf, CONFIG_DR_NVRAM_SECTION_A_SIZE);
+	}
+	else {
+		r = write_section(nvram->flash, CONFIG_DR_NVRAM_SECTION_B_START, buf, CONFIG_DR_NVRAM_SECTION_B_SIZE);
+	}
+	if (!r && is_counter_reset) {
+		// second write, if requested
+		if (is_write_a) {
+			r = write_section(nvram->flash, CONFIG_DR_NVRAM_SECTION_B_START, buf, CONFIG_DR_NVRAM_SECTION_B_SIZE);
+		}
+		else {
+			r = write_section(nvram->flash, CONFIG_DR_NVRAM_SECTION_A_START, buf, CONFIG_DR_NVRAM_SECTION_A_SIZE);
+		}
+	}
 	if (r) {
-		printf("%s: failed serializing data [%d]: %s\n", __func__, r, errno_str(r));
 		goto exit;
 	}
 
-	switch(nvram_priv->active) {
-	case SECTION_A:
-		r = write_section(SECTION_B, buf, size);
-		if (r) {
-			goto exit;
-		}
-		break;
-	case SECTION_B:
-		r = write_section(SECTION_A, buf, size);
-		if (r) {
-			goto exit;
-		}
-		break;
-	case SECTION_UNKNOWN:
-		printf("%s: no active section\n", __func__);
-		r = -EINVAL;
-		goto exit;
-		break;
-	}
+	nvram_update_transaction(&nvram->trans, op, &hdr);
+	printf("nvram: active: %s\n", nvram_active_str(nvram->trans.active));
+	nvram->list_updated = 0;
 
 	r = 0;
-
 exit:
 	if (buf) {
 		free(buf);
@@ -237,17 +204,15 @@ exit:
 
 char *nvram_get(const char* varname)
 {
-	if (!varname) {
+	if (!varname || !nvram) {
 		return NULL;
 	}
-
-	if (!nvram_priv) {
-		if (nvram_load()) {
-			return NULL;
-		}
+	struct nvram_entry *entry = nvram_list_get(nvram->list, (uint8_t*) varname, strlen(varname) + 1);
+	if (entry && entry->value[entry->value_len - 1] == '\0') {
+		return (char*) entry->value;
 	}
-
-	return nvram_list_get(&nvram_priv->list, varname);
+	// not entry->value not string
+	return NULL;
 }
 
 ulong nvram_get_ulong(const char* varname, int base, ulong default_value)
@@ -270,7 +235,7 @@ static int starts_with(const char* str, const char* prefix)
 
 int nvram_set(const char* varname, const char* value)
 {
-	if (!varname) {
+	if (!varname || !nvram) {
 		return 1;
 	}
 
@@ -279,21 +244,25 @@ int nvram_set(const char* varname, const char* value)
 		return 1;
 	}
 
-	if (!nvram_priv) {
-		if (nvram_load()) {
-			return 1;
-		}
-	}
-
 	if (!value || !strlen(value)) {
-		if (nvram_list_remove(&nvram_priv->list, varname)) {
-			nvram_updated = 1;
+		if (nvram_list_remove(&nvram->list, (uint8_t*) varname, strlen(varname) + 1)) {
+			nvram->list_updated = 1;
 			return 0;
 		}
 	}
 	else {
-		if (!nvram_list_set(&nvram_priv->list, varname, value)) {
-			nvram_updated = 1;
+		const char *_val = nvram_get(varname);
+		if (_val && !strcmp(_val, value)) {
+			// already equal
+			return 0;
+		}
+		struct nvram_entry entry;
+		entry.key = (uint8_t*) varname;
+		entry.key_len = strlen(varname) + 1;
+		entry.value = (uint8_t*) value;
+		entry.value_len = strlen(value) + 1;
+		if (!nvram_list_set(&nvram->list, &entry)) {
+			nvram->list_updated = 1;
 			return 0;
 		}
 	}
@@ -313,31 +282,10 @@ int nvram_set_env(const char* varname, const char* envname)
 	return var ? env_set(envname, var) : 1;
 }
 
-int nvram_commit(void)
-{
-	if (!nvram_priv) {
-		return 0;
-	}
-
-	int r = nvram_store();
-	if (r) {
-		return r;
-	}
-
-	destroy_nvram_list(&nvram_priv->list);
-	free(nvram_priv);
-	nvram_priv = NULL;
-
-	return 0;
-}
-
 struct nvram_list* const nvram_get_list(void)
 {
-	if (!nvram_priv) {
-		if(nvram_load()) {
-			return NULL;
-		}
+	if (!nvram) {
+		return NULL;
 	}
-
-	return &nvram_priv->list;
+	return nvram->list;
 }

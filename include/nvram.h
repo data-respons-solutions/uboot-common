@@ -52,6 +52,13 @@ int nvram_set_ulong(const char* varname, ulong value);
 int nvram_set_env(const char* varname, const char* envname);
 
 /**
+ * nvram_init() - initialize nvram, must be called before any other functions
+ *
+ * @return 0 if ok, -errno on error
+ */
+int nvram_init(void);
+
+/**
  * nvram_commit() - commit nvram variables to flash
  *
  * @return 0 if ok, -errno on error
