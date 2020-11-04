@@ -1,62 +1,12 @@
 #ifndef __DATARESPONS_CONFIG_H
 #define __DATARESPONS_CONFIG_H
 
-#define BOOTSCRIPT_NOSECURE \
+#define BOOTSCRIPT \
 	"run setargs; run loadfdt;" \
 	"if run loadimage; then " \
 		"bootz ${loadaddr} - ${fdt_addr};" \
 	"else " \
 		"echo ERROR: Could not load prescribed config;" \
-	"fi;"
-
-#define BOOTSCRIPT_SECURE \
-	"run setargs; " \
-	"if run load_ivt_info; then " \
-		"echo IVT starts at ${ivt_offset}; " \
-		"if run loadimage; then " \
-			"if hab_auth_img ${loadaddr} ${filesize} ${ivt_offset}; then " \
-				"echo Authenticated kernel; " \
-				"run loadfdt; bootz ${loadaddr} - ${fdt_addr}; " \
-			"else " \
-				"echo Failed to authenticate kernel; " \
-			"fi; " \
-		"else " \
-			"echo Failed to load image ${zimage}; " \
-		"fi; " \
-	"else " \
-		"echo No IVT information; " \
-	"fi;"
-
-#define VALIDATE_ZIMAGE \
-	"if run load_ivt_info; then " \
-		"echo kernel IVT starts at ${ivt_offset}; " \
-		"if run loadimage; then " \
-			"if hab_auth_img ${loadaddr} ${filesize} ${ivt_offset}; then " \
-				"echo Authenticated kernel; " \
-			"else " \
-				"echo Failed to authenticate kernel && false;" \
-			"fi; " \
-		"else " \
-			"echo Failed to load image ${zimage} && false; " \
-		"fi; " \
-	"else " \
-		"echo No IVT information && false; " \
-	"fi;"
-
-#define VALIDATE_INITRD \
-	"if run load_initrd_ivt_info; then " \
-		"echo INITRD IVT loaded at ${initrd_addr} offset is ${ivt_offset}; " \
-		"if run loadinitrd; then " \
-			"if hab_auth_img ${initrd_addr} ${filesize} ${ivt_offset}; then " \
-				"echo Authenticated initrd; " \
-			"else " \
-				"echo Failed to authenticate initrd && false; " \
-			"fi; " \
-		"else " \
-			"echo Failed to load image ${initrd_file} && false; " \
-		"fi; " \
-	"else " \
-		"echo No IVT information && false; " \
 	"fi;"
 
 #define BOOT_PRELOADED \
@@ -118,18 +68,6 @@
 #define __USB_ENVIRONMENT
 #endif
 
-#if defined(CONFIG_SECURE_BOOT)
-#define __SECURE_BOOT_ENVIRONMENT \
-	"bootscript_secure="BOOTSCRIPT_SECURE"\0" \
-	"ivt_offset=0\0" \
-	"load_ivt_info=if ext4load ${bootfrom} ${bootdev}:${bootpart} 11F00000 /boot/zImage-padded-size; then env import -t 11F00000 ${filesize}; fi; \0" \
-	"load_initrd_ivt_info=if ext4load ${bootfrom} ${bootdev}:${bootpart} 11F00000 /boot/initrd-padded-size; then env import -t 11F00000 ${filesize}; fi; \0" \
-	"validate_image=" VALIDATE_ZIMAGE "\0" \
-	"validate_initrd=" VALIDATE_INITRD "\0"
-#else
-#define __SECURE_BOOT_ENVIRONMENT
-#endif
-
 #define DATARESPONS_BOOT_SCRIPTS \
 	"zimage="DEFAULT_ZIMAGE"\0" \
 	"initrd_file="DEFAULT_INITRD"\0" \
@@ -146,8 +84,7 @@
 	"loadfdt=ext4load ${bootfrom} ${bootdev}:${bootpart} ${fdt_addr} ${fdt_file}; \0" \
 	"bootpreloaded="BOOT_PRELOADED"\0" \
 	"loadbootscript=if ext4load ${bootfrom} ${bootdev}:${bootpart} ${loadaddr} /boot/boot.txt; then env import -t ${loadaddr} ${filesize}; fi; \0" \
-	"bootscript="BOOTSCRIPT_NOSECURE"\0" \
-	__SECURE_BOOT_ENVIRONMENT \
+	"bootscript="BOOTSCRIPT"\0" \
 	"loglevel="DEFAULT_LOGLEVEL"\0" \
 	"consoleblank="DEFAULT_CONSOLEBLANK"\0"
 
