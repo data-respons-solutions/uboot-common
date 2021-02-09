@@ -1,17 +1,23 @@
 #ifndef __DATARESPONS_CONFIG_H
 #define __DATARESPONS_CONFIG_H
 
+#ifdef CONFIG_ARM64
+    #define KERNEL_LOADER "booti "
+#else
+    #define KERNEL_LOADER "bootz "
+#endif
+
 #define BOOTSCRIPT \
 	"run setargs; run loadfdt;" \
 	"if run loadimage; then " \
-		"bootz ${loadaddr} - ${fdt_addr};" \
+		KERNEL_LOADER" ${loadaddr} - ${fdt_addr};" \
 	"else " \
 		"echo ERROR: Could not load prescribed config;" \
 	"fi;"
 
 #define BOOT_PRELOADED \
 	"echo trying preloaded boot...;" \
-	"bootz ${loadaddr} ${initrd_addr} ${fdt_addr};" \
+	KERNEL_LOADER " ${loadaddr} ${initrd_addr} ${fdt_addr};" \
 	"echo    no preloaded image;"
 
 #define BOOT_USB \
