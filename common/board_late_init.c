@@ -1,126 +1,138 @@
 #include <common.h>
 #include <command.h>
+#include <env.h>
+#include <part.h>
 #include <asm/mach-imx/hab.h>
 #include <linux/libfdt.h>
 #include "../include/bootsplash.h"
 #include "../include/nvram.h"
 
-static const char* VAR_BOOT_PART = CONFIG_DR_NVRAM_VARIABLE_PREFIX "" CONFIG_DR_NVRAM_VARIABLE_BOOT_PART;
-static const char* VAR_BOOT_SWAP = CONFIG_DR_NVRAM_VARIABLE_PREFIX "" CONFIG_DR_NVRAM_VARIABLE_BOOT_SWAP;
-static const char* VAR_BOOT_VERIFIED = CONFIG_DR_NVRAM_VARIABLE_PREFIX "" CONFIG_DR_NVRAM_VARIABLE_BOOT_VERIFIED;
-static const char* VAR_BOOT_RETRIES = CONFIG_DR_NVRAM_VARIABLE_PREFIX "" CONFIG_DR_NVRAM_VARIABLE_BOOT_RETRIES;
+static const char* syslabel_default = "rootfs1";
+static const char* syslabel = "syslabel";
+static const char* syspart = "syspart";
+static const char* sysdev = "sysdev";
+static const char* sysiface = "sysiface";
+static const char* sysuuid = "sysuuid";
 
-#if defined(CONFIG_DR_NVRAM)
-static int nvram_init_env(void)
+#if defined(CONFIG_DR_NVRAM_ROOT_SWAP)
+
+static const char* sys_boot_part = "SYS_BOOT_PART";
+static const char* sys_boot_swap = "SYS_BOOT_SWAP";
+static const char* sys_boot_attempts = "SYS_BOOT_ATTEMPTS";
+
+enum swap_state {
+	SWAP_NORMAL,
+	SWAP_INIT,
+	SWAP_ONGOING,
+	SWAP_FAILED,
+	SWAP_ROLLBACK,
+	SWAP_INVAL,
+};
+
+static enum swap_state find_state(ulong* attempts)
 {
-	const char* part = nvram_get(VAR_BOOT_PART);
-	if (!part) {
-		printf("%s: %s: reset to default: \"%s\"\n", __func__, VAR_BOOT_PART, DEFAULT_MMC_PART);
-		if (nvram_set(VAR_BOOT_PART, DEFAULT_MMC_PART)) {
-			return -EFAULT;
-		}
+	if (!nvram_get(sys_boot_part) || !nvram_get(sys_boot_swap))
+		return SWAP_INVAL;
+
+	const int part_swap_equal = !strcmp(nvram_get(sys_boot_part), nvram_get(sys_boot_swap));
+
+	if (part_swap_equal && !env_get(sys_boot_attempts)) {
+		return SWAP_NORMAL;
+	}
+	else {
+		return SWAP_ROLLBACK;
 	}
 
-	if (nvram_set_env(VAR_BOOT_PART, "mmcpart")) {
+	if (!env_get(sys_boot_attempts))
+		return SWAP_INIT;
+
+	*attempts = env_get_ulong(sys_boot_attempts, 10, ULONG_MAX);
+	if (*attempts == ULONG_MAX)
+		return SWAP_INVAL;
+
+	if (*attempts < 3)
+		return SWAP_ONGOING;
+
+	return SWAP_FAILED;
+}
+
+static int nvram_root_swap(void)
+{
+	char* label = nvram_get(sys_boot_part);
+	ulong attempts = ULONG_MAX;
+
+	switch(find_state(&attempts)) {
+	case SWAP_NORMAL:
+		printf("Root swap: normal boot\n");
+		break;
+	case SWAP_INIT:
+		printf("Root swap: initiated\n");
+		nvram_set_ulong(sys_boot_attempts, 1);
+		label = nvram_get(sys_boot_swap);
+		break;
+	case SWAP_ONGOING:
+		printf("Root swap: ongoing\n");
+		nvram_set_ulong(sys_boot_attempts, ++attempts);
+		label = nvram_get(sys_boot_swap);
+		break;
+	case SWAP_FAILED:
+		printf("Root swap: failed, rollback now\n");
+		nvram_set(sys_boot_swap, nvram_get(sys_boot_part))
+		break;
+	case SWAP_ROLLBACK:
+		printf("Root swap: rollback has occured\n");
+		break;
+	case SWAP_INVAL:
+		printf("Root swap: invalid state -- reset\n");
+		if (nvram_set(sys_boot_part, syslabel_default))
+			return -ENOMEM;
+		if (nvram_set(sys_boot_swap, syslabel_default))
+			return -ENOMEM;
+		if (nvram_set(sys_boot_attempts, NULL))
+			return -ENOMEM;
+		break;
+	}
+
+	if (env_set(syslabel, label))
+			return -ENOMEM;
+
+	return 0;
+}
+#endif
+
+static int part_from_label(void)
+{
+	if (!env_get(syslabel) && env_set(syslabel, syslabel_default))
+		return -ENOMEM;
+
+	if (env_set(sysiface, SYS_BOOT_IFACE))
+		return -ENOMEM;
+	if (env_set_ulong(sysdev, SYS_BOOT_DEV))
+		return -ENOMEM;
+
+	printf("Finding syspart with syslabel \"%s\" on device %s %s\n", env_get(syslabel), env_get(sysiface), env_get(sysdev));
+
+	struct blk_desc* dev = blk_get_dev(env_get(sysiface), env_get_ulong(sysdev, 10, ULONG_MAX));
+	if (!dev) {
+		printf("Failed getting system boot device\n");
 		return -EFAULT;
 	}
 
+	disk_partition_t part_info;
+	int part = part_get_info_by_name(dev, env_get(syslabel), &part_info);
+	if (part < 1) {
+		printf("syslabel not found\n");
+		return -EINVAL;
+	}
+	if(env_set_ulong(syspart, part))
+		return -ENOMEM;
+	if(env_set(sysuuid, part_info.uuid))
+		return -ENOMEM;
+
+	printf("Found syspart %s with sysuuid: %s\n", env_get(syspart), env_get(sysuuid));
+
 	return 0;
 }
-#endif
-
-#if defined(CONFIG_DR_NVRAM_BOOT_SWAP)
-/*
- * Modes detected during boot:
- *
- * x = don't care
- *
- * mode        | _verified |  _swap  |     _retries     |
- * normal      |      x    |  _part  |       x          |
- * init swap   |    true   |  !_part |      NULL        |
- * swapping    |    false  |  !_part |     < MAX        |
- * rollback    |    false  |  !_part |    >= MAX        |
- * verified    |    true   |  !_part |     !NULL        |
- *
- */
-
-static int nvram_boot_swap(void)
-{
-	const char* verified = nvram_get(VAR_BOOT_VERIFIED);
-	if (!verified) {
-		printf("%s: %s: reset to default: \"true\"\n", __func__, VAR_BOOT_VERIFIED);
-		if (nvram_set(VAR_BOOT_VERIFIED, "true")) {
-			return -EFAULT;
-		}
-	}
-	const char* swap = nvram_get(VAR_BOOT_SWAP);
-	if (!swap) {
-		printf("%s: %s: reset to default: \"%s\"\n", __func__, VAR_BOOT_SWAP, nvram_get(VAR_BOOT_PART));
-		if (nvram_set(VAR_BOOT_SWAP, nvram_get(VAR_BOOT_PART))) {
-			return -EFAULT;
-		}
-	}
-
-	if (!strcmp(nvram_get(VAR_BOOT_PART), nvram_get(VAR_BOOT_SWAP))) {
-		/* mode normal */
-		printf("%s: verified state: p%s\n", __func__, nvram_get(VAR_BOOT_PART));
-		if (strcmp(nvram_get(VAR_BOOT_VERIFIED), "true")) {
-			printf("%s: setting %s to true\n", __func__, VAR_BOOT_VERIFIED);
-			if (nvram_set(VAR_BOOT_VERIFIED, "true")) {
-				return -EFAULT;
-			}
-		}
-		return 0;
-	}
-
-	if (!strcmp(nvram_get(VAR_BOOT_VERIFIED), "true")) {
-		if (nvram_get(VAR_BOOT_RETRIES)) {
-			/* mode verified */
-			printf("%s: swap from p%s to p%s successful\n", __func__, nvram_get(VAR_BOOT_PART), nvram_get(VAR_BOOT_SWAP));
-			if (nvram_set(VAR_BOOT_PART, nvram_get(VAR_BOOT_SWAP))) {
-				return -EFAULT;
-			}
-			if (nvram_set(VAR_BOOT_RETRIES, NULL)) {
-				return -EFAULT;
-			}
-
-		}
-		else {
-			/* mode init swap */
-			printf("%s: swap initiated: p%s -> p%s\n", __func__, nvram_get(VAR_BOOT_PART), nvram_get(VAR_BOOT_SWAP));
-			if (nvram_set_ulong(VAR_BOOT_RETRIES, 0)) {
-				return -EFAULT;
-			}
-			if (nvram_set(VAR_BOOT_VERIFIED, "false")) {
-				return -EFAULT;
-			}
-			nvram_set_env(VAR_BOOT_SWAP, "mmcpart");
-		}
-		return 0;
-	}
-
-	/* mode in progress */
-	const ulong retries = nvram_get_ulong(VAR_BOOT_RETRIES, 10, 0) + 1;
-	nvram_set_ulong(VAR_BOOT_RETRIES, retries);
-	printf("%s: swap from p%s to p%s in progress: retries: %lu\n", __func__, nvram_get(VAR_BOOT_PART), nvram_get(VAR_BOOT_SWAP), retries);
-	if (retries >= (ulong) CONFIG_DR_NVRAM_BOOT_SWAP_RETRIES) {
-		/* mode rollback */
-		printf("%s: max retries reached (%lu >= %lu): rollback\n", __func__, retries, (ulong) CONFIG_DR_NVRAM_BOOT_SWAP_RETRIES);
-		if (nvram_set(VAR_BOOT_SWAP, nvram_get(VAR_BOOT_PART))) {
-			return -EFAULT;
-		}
-		if (nvram_set(VAR_BOOT_RETRIES, NULL)) {
-			return -EFAULT;
-		}
-		if (nvram_set(VAR_BOOT_VERIFIED, "true")) {
-			return -EFAULT;
-		}
-	}
-
-	nvram_set_env(VAR_BOOT_SWAP, "mmcpart");
-	return 0;
-}
-#endif
 
 int board_late_init(void)
 {
@@ -131,10 +143,6 @@ int board_late_init(void)
 		printf("Failed nvram_init [%d]: %s\n", r, errno_str(r));
 	}
 	else {
-		r = nvram_init_env();
-		if (r) {
-			printf("Failed setting nvram env [%d]: %s\n", r, errno_str(r));
-		}
 #if defined (CONFIG_DR_NVRAM_BOOT_SWAP)
 		r = nvram_boot_swap();
 		if (r) {
@@ -153,6 +161,11 @@ int board_late_init(void)
 		printf("Failed loading bootsplash [%d]: %s\n", r, errno_str(r));
 	}
 #endif
+
+	r = part_from_label();
+	if (r) {
+		printf("Failed getting system partition [%d]: %s\n", r, errno_str(r));
+	}
 
 	return 0;
 }

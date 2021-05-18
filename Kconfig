@@ -35,7 +35,8 @@ config DR_NVRAM_BOOT_SWAP
 	  DR_NVRAM_BOOT_SWAP_RETRIES.
 
 config DR_BOARD_LATE_INIT
-	depends on DR_COMMON_CONFIGS && BOARD_LATE_INIT
+	depends on DR_COMMON_CONFIGS && BOARD_LATE_INIT \
+		&& EFI_PARTITION
 	bool "DR board_late_init"
 	help
 	  Common board_late_init for DR boards
@@ -80,26 +81,7 @@ config DR_NVRAM_BOOTSPLASH_SIZE
 	hex "Bootsplash size in flash"
 	default 0
 	
-config DR_NVRAM_BOOT_SWAP_RETRIES
+config DR_NVRAM_BOOT_SWAP_MAX_ATTEMPTS
 	int "Max number of retries before rollback"
 	default 3
-	
-config DR_NVRAM_VARIABLE_PREFIX
-	string "Mandatory prefix for nvram variables"
-	default "SYS_"
-	
-config DR_NVRAM_VARIABLE_BOOT_PART
-	string "Boot partition variable. Will be prefixed with DR_NVRAM_VARIABLE_PREFIX"
-	default "BOOT_PART"
-	
-config DR_NVRAM_VARIABLE_BOOT_SWAP
-	string "Boot swap variable. Will be prefixed with DR_NVRAM_VARIABLE_PREFIX"
-	default "BOOT_SWAP"
-	
-config DR_NVRAM_VARIABLE_BOOT_VERIFIED
-	string "Boot verified variable. Will be prefixed with DR_NVRAM_VARIABLE_PREFIX"
-	default "BOOT_VERIFIED"
-	
-config DR_NVRAM_VARIABLE_BOOT_RETRIES
-	string "Boot retries variable. Will be prefixed with DR_NVRAM_VARIABLE_PREFIX"
-	default "BOOT_RETRIES"
+
