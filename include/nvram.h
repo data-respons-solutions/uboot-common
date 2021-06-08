@@ -69,6 +69,6 @@ int nvram_commit(void);
  * nvram_get_list() - Get nvram_list
  * @return NULL if not OK
  */
-struct nvram_list* const nvram_get_list(void);
+struct libnvram_list* const nvram_get_list(void);
 
 #endif // __DR_NVRAM_H__

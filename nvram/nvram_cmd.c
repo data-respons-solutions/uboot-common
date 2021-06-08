@@ -22,7 +22,7 @@ static int do_nvram(cmd_tbl_t *cmdtp, int flag, int argc,
 	}
 	else
 	if (strncmp(argv[1], "list", 4) == 0) {
-		for (struct nvram_list* cur = nvram_get_list(); cur; cur = cur->next) {
+		for (struct libnvram_list* cur = nvram_get_list(); cur; cur = cur->next) {
 			printf("%s = %s\n", (char*) cur->entry->key, (char*) cur->entry->value);
 		}
 	}
