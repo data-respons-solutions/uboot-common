@@ -35,18 +35,16 @@ static enum swap_state find_state(ulong* attempts)
 		return SWAP_INVAL;
 
 	const int part_swap_equal = !strcmp(nvram_get(sys_boot_part), nvram_get(sys_boot_swap));
-
-	if (part_swap_equal && !env_get(sys_boot_attempts)) {
+	if (part_swap_equal && !nvram_get(sys_boot_attempts))
 		return SWAP_NORMAL;
-	}
-	else {
-		return SWAP_ROLLBACK;
-	}
 
-	if (!env_get(sys_boot_attempts))
+	if (part_swap_equal && nvram_get(sys_boot_attempts))
+		return SWAP_ROLLBACK;
+
+	if (!nvram_get(sys_boot_attempts))
 		return SWAP_INIT;
 
-	*attempts = env_get_ulong(sys_boot_attempts, 10, ULONG_MAX);
+	*attempts = nvram_get_ulong(sys_boot_attempts, 10, ULONG_MAX);
 	if (*attempts == ULONG_MAX)
 		return SWAP_INVAL;
 
@@ -77,7 +75,7 @@ static int nvram_root_swap(void)
 		break;
 	case SWAP_FAILED:
 		printf("Root swap: failed, rollback now\n");
-		nvram_set(sys_boot_swap, nvram_get(sys_boot_part))
+		nvram_set(sys_boot_swap, nvram_get(sys_boot_part));
 		break;
 	case SWAP_ROLLBACK:
 		printf("Root swap: rollback has occured\n");
@@ -90,12 +88,13 @@ static int nvram_root_swap(void)
 			return -ENOMEM;
 		if (nvram_set(sys_boot_attempts, NULL))
 			return -ENOMEM;
+		label = nvram_get(sys_boot_part);
 		break;
 	}
 
-	if (env_set(syslabel, label))
-			return -ENOMEM;
-
+	if (env_set(syslabel, label)) {
+		return -ENOMEM;
+	}
 	return 0;
 }
 #endif
@@ -143,10 +142,10 @@ int board_late_init(void)
 		printf("Failed nvram_init [%d]: %s\n", r, errno_str(r));
 	}
 	else {
-#if defined (CONFIG_DR_NVRAM_BOOT_SWAP)
-		r = nvram_boot_swap();
+#if defined (CONFIG_DR_NVRAM_ROOT_SWAP)
+		r = nvram_root_swap();
 		if (r) {
-			printf("Failed boot swap procedure [%d]: %s\n", r, errno_str(r));
+			printf("Failed root swap procedure [%d]: %s\n", r, errno_str(r));
 		}
 #endif
 		r = nvram_commit();

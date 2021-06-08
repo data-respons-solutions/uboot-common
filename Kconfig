@@ -23,16 +23,11 @@ config DR_NVRAM_BOOTSPLASH
 	  Load splash image from spi flash
 	  Shares spi flash config with DR_NVRAM
 
-config DR_NVRAM_BOOT_SWAP
+config DR_NVRAM_ROOT_SWAP
 	depends on DR_COMMON_CONFIGS && DR_NVRAM
 	bool "DR nvram based rootfs swapping"
 	help
-	  Initiating swap is performed by setting DR_NVRAM_VARIABLE_BOOT_SWAP
-	  to partition number of new boot device.
-	  When successfully booted to new partition, set
-	  DR_NVRAM_VARIABLE_BOOT_VERIFIED to "true" to confirm successfull swap.
-	  Number of retries before rollback defined by 
-	  DR_NVRAM_BOOT_SWAP_RETRIES.
+	  Conform to dr-bsp-spec.
 
 config DR_BOARD_LATE_INIT
 	depends on DR_COMMON_CONFIGS && BOARD_LATE_INIT \
