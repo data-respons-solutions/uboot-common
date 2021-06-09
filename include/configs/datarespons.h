@@ -16,7 +16,7 @@
 		"if usb storage; then " \
 			"if part uuid usb ${usbdev}:${usbpart} usbuuid; then " \
 				"if ext4load usb ${usbdev}:${usbpart} ${fit_addr} ${fit_image}; then " \
-					"setenv bootargs root=PARTUUID=${usbuuid};" \
+					"setenv bootargs rootwait root=PARTUUID=${usbuuid};" \
 					"bootm ${fit_addr};" \
 					"echo USB boot failed;" \
 				"fi;" \
