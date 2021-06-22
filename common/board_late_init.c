@@ -13,6 +13,22 @@ static const char* syspart = "syspart";
 static const char* sysdev = "sysdev";
 static const char* sysiface = "sysiface";
 static const char* sysuuid = "sysuuid";
+static const char* envfitconf = "fit_conf";
+
+#if defined(CONFIG_DR_NVRAM)
+
+static const char* sys_fit_conf = "SYS_FIT_CONF";
+
+static int fit_conf(void)
+{
+	const char* conf = nvram_get(sys_fit_conf);
+	if (conf) {
+		env_set(envfitconf, conf);
+		printf("FIT conf: %s\n", conf);
+	}
+	return 0;
+}
+#endif
 
 #if defined(CONFIG_DR_NVRAM_ROOT_SWAP)
 
@@ -138,33 +154,32 @@ int board_late_init(void)
 	int r = 0;
 #if defined (CONFIG_DR_NVRAM)
 	r = nvram_init();
-	if (r) {
+	if (r)
 		printf("Failed nvram_init [%d]: %s\n", r, errno_str(r));
-	}
 	else {
+		r = fit_conf();
+		if (r)
+			printf("Failed setting fit_conf: %d\n", r);
+
 #if defined (CONFIG_DR_NVRAM_ROOT_SWAP)
 		r = nvram_root_swap();
-		if (r) {
+		if (r)
 			printf("Failed root swap procedure [%d]: %s\n", r, errno_str(r));
-		}
 #endif
 		r = nvram_commit();
-		if (r) {
+		if (r)
 			printf("Failed commiting nvram [%d]: %s\n", r, errno_str(r));
-		}
 	}
 #endif
 #if defined(CONFIG_DR_NVRAM_BOOTSPLASH)
 	printf("Enabling bootsplash...\n");
-	if ((r = bootsplash_load())) {
+	if ((r = bootsplash_load()))
 		printf("Failed loading bootsplash [%d]: %s\n", r, errno_str(r));
-	}
 #endif
 
 	r = part_from_label();
-	if (r) {
+	if (r)
 		printf("Failed getting system partition [%d]: %s\n", r, errno_str(r));
-	}
 
 	return 0;
 }

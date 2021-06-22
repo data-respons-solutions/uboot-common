@@ -7,7 +7,7 @@
 
 #define BOOT_PRELOADED \
 	"echo trying preloaded boot...;" \
-	"bootm ${fit_addr};" \
+	"run bootfit;" \
 	"echo    no preloaded image;"
 
 #define BOOT_USB \
@@ -17,7 +17,7 @@
 			"if part uuid usb ${usbdev}:${usbpart} usbuuid; then " \
 				"if ext4load usb ${usbdev}:${usbpart} ${fit_addr} ${fit_image}; then " \
 					"setenv bootargs rootwait root=PARTUUID=${usbuuid};" \
-					"bootm ${fit_addr};" \
+					"run bootfit;" \
 					"echo USB boot failed;" \
 				"fi;" \
 			"else " \
@@ -34,10 +34,19 @@
 	"echo trying system boot...;" \
 	"if ext4load ${sysiface} ${sysdev}:${syspart} ${fit_addr} ${fit_image}; then " \
 		"setenv bootargs root=PARTUUID=${sysuuid};" \
-		"bootm ${fit_addr};" \
+		"run bootfit;" \
+		"echo sys boot failed;" \
 	"else " \
 		"echo Failed loading fit image from system;" \
 	"fi;"
+
+#define BOOT_FIT \
+	"if test -n \"$fit_conf\"; then " \
+		"echo trying ${fit_addr}#${fit_conf};" \
+		"bootm ${fit_addr}#${fit_conf};" \
+	"fi;" \
+	"echo trying ${fit_addr};" \
+	"bootm ${fit_addr};"
 
 #if defined(CONFIG_CMD_USB)
 #define __USB_ENVIRONMENT \
@@ -53,6 +62,7 @@
 	"fit_image="FIT_IMAGE"\0" \
 	__USB_ENVIRONMENT \
 	"bootpreloaded="BOOT_PRELOADED"\0" \
-	"bootsys="BOOT_SYS"\0"
+	"bootsys="BOOT_SYS"\0" \
+	"bootfit="BOOT_FIT"\0"
 
 #endif /* __DATARESPONS_CONFIG_H */
