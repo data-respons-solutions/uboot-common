@@ -36,6 +36,9 @@ config DR_BOARD_LATE_INIT
 	help
 	  Common board_late_init for DR boards
  
+config SPL_LIBNVRAM
+	bool "libnvram for SPL"
+ 
 config DR_NVRAM_BUS
 	int "SPI bus for flash"
 	default 0
