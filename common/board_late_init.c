@@ -161,6 +161,12 @@ int board_late_init(void)
 		if (r)
 			printf("Failed setting fit_conf: %d\n", r);
 
+	if (!env_get("serial#") && nvram_get("SYS_SERIALNUMBER")) {
+		if (nvram_set_env("SYS_SERIALNUMBER", "serial#"))
+				printf("Failed setting serial#\n");
+	}
+	printf("Serial number: %s\n", env_get("serial#"));
+
 #if defined (CONFIG_DR_NVRAM_ROOT_SWAP)
 		r = nvram_root_swap();
 		if (r)
