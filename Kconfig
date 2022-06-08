@@ -15,12 +15,13 @@ config CMD_DR_NVRAM
 	bool "DR NVRAM interface CMD"
 	help
 	  Command for interface nvram
-
-config DR_NVRAM_ROOT_SWAP
-	depends on DR_COMMON_CONFIGS && DR_NVRAM
-	bool "DR nvram based rootfs swapping"
-	help
-	  Conform to dr-bsp-spec.
+	  
+config CMD_DR_SYSTEM_BOOT
+	depends on DR_NVRAM
+	bool "DR linux boot command"
+	
+config CMD_DR_ANDROID_BOOT
+	bool "DR android boot command"
  
 config SPL_LIBNVRAM
 	bool "libnvram for SPL"
@@ -56,16 +57,3 @@ config DR_NVRAM_SECTION_B_START
 config DR_NVRAM_SECTION_B_SIZE
 	hex "Section b size in flash"
 	default 0
-	
-config DR_NVRAM_BOOTSPLASH_START
-	hex "Bootsplash offset in flash"
-	default 0
-	
-config DR_NVRAM_BOOTSPLASH_SIZE
-	hex "Bootsplash size in flash"
-	default 0
-	
-config DR_NVRAM_BOOT_SWAP_MAX_ATTEMPTS
-	int "Max number of retries before rollback"
-	default 3
-
