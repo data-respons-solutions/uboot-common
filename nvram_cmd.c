@@ -1,7 +1,7 @@
 #include <common.h>
 #include <command.h>
-#include "../include/nvram.h"
-#include "../libnvram/libnvram.h"
+#include "nvram.h"
+#include "libnvram/libnvram.h"
 
 static int do_nvram(cmd_tbl_t *cmdtp, int flag, int argc,
 			char * const argv[])

@@ -4,8 +4,8 @@
 #include <spi_flash.h>
 #include <inttypes.h>
 #include <linux/ctype.h>
-#include "../include/nvram.h"
-#include "../libnvram/libnvram.h"
+#include "nvram.h"
+#include "libnvram/libnvram.h"
 
 struct nvram {
 	struct udevice *flash;
