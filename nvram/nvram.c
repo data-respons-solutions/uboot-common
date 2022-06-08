@@ -62,7 +62,7 @@ static const char* active_str(enum libnvram_active active)
 int nvram_init(void)
 {
 	if (nvram)
-		return -EALREADY;
+		return 0;
 
 	uint8_t *buf_a = NULL;
 	uint8_t *buf_b = NULL;
