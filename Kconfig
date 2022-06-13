@@ -17,12 +17,20 @@ config CMD_DR_NVRAM
 	  Command for interface nvram
 	  
 config CMD_DR_SYSTEM_BOOT
-	depends on DR_NVRAM
+	select DR_NVRAM
 	bool "DR linux boot command"
 	
 config CMD_DR_ANDROID_BOOT
+	select ANDROID_AB
+	select AVB_VERIFY
+	select LIBAVB
+	select ANDROID_BOOT_IMAGE
+	select AVB_SUPPORT
+	select ANDROID_DYNAMIC_PARTITION
+	select APPEND_BOOTARGS
+	select SUPPORT_RAW_INITRD
 	bool "DR android boot command"
- 
+  
 config SPL_LIBNVRAM
 	bool "libnvram for SPL"
  
