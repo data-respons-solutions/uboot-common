@@ -1,5 +1,4 @@
 #include <common.h>
-#include <usb.h>
 #include <inttypes.h>
 #include <command.h>
 #include <android_ab.h>
@@ -9,10 +8,6 @@
 #include <dt_table.h>
 
 /* Depends:
- * CONFIG_ANDROID_AB=y
- * CONFIG_AVB_VERIFY=y
- * CONFIG_LIBAVB=y
- * CONFIG_ANDROID_BOOT_IMAGE=y
  * SYS_BOOT_DEV --> boot device num
  * SYS_BOOT_IFACE --> boot iface
  */
@@ -26,32 +21,7 @@
 /* Should we leave it fixed ? */
 #define DTBO_INDEX 0
 
-/* As device is unlocked should state be AVB_ORANGE and not AVB_GREEN?
- */
-
-/* Map u-boot mmc device index to kernel block device index
- */
-int mmc_map_to_kernel_blk(int dev_no)
-{
-	return dev_no;
-}
-
-/* Boot metric variables */
-boot_metric metrics = {
-  .bll_1 = 0,
-  .ble_1 = 0,
-  .kl	 = 0,
-  .kd	 = 0,
-  .avb	 = 0,
-  .odt	 = 0,
-  .sw	 = 0
-};
-
-/* Override to act as fastboot gadget */
-int board_usb_phy_mode(struct udevice *dev)
-{
-	return USB_INIT_DEVICE;
-}
+/* As device is unlocked should state be AVB_ORANGE and not AVB_GREEN? */
 
 static int validate_avb(int slot, AvbSlotVerifyData** out_data)
 {
@@ -306,15 +276,4 @@ U_BOOT_CMD(
 	"Check A/B partition\n"
 	"Validate AVB\n"
 	"Boot\n"
-);
-
-static int do_is_usb_boot(cmd_tbl_t *cmdtp, int flag, int argc,
-			char * const argv[])
-{
-	return is_usb_boot() ? CMD_RET_SUCCESS : CMD_RET_FAILURE;
-}
-
-U_BOOT_CMD(
-	is_usb_boot, 1, 0, do_is_usb_boot, "usb boot?",
-	"Return true if booted from usb\n"
 );
