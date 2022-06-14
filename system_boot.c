@@ -51,12 +51,6 @@ static enum swap_state find_state(ulong* attempts)
 
 static int nvram_root_swap(char** rootfs_label)
 {
-	int r = nvram_init();
-	if (r) {
-		printf("BOOT: failed nvram_init [%d]: %s\n", r, errno_str(r));
-		return r;
-	}
-
 	char* label = nvram_get(sys_boot_part);
 	ulong attempts = ULONG_MAX;
 
@@ -93,7 +87,7 @@ static int nvram_root_swap(char** rootfs_label)
 		break;
 	}
 
-	r = nvram_commit();
+	const int r = nvram_commit();
 	if (r) {
 		printf("BOOT: failed commiting nvram [%d]: %s\n", r, errno_str(r));
 		return r;

@@ -59,7 +59,12 @@ static const char* active_str(enum libnvram_active active)
 	}
 }
 
-int nvram_init(void)
+/**
+ * nvram_init() - initialize nvram, must be called before any other functions
+ *
+ * @return 0 if ok, -errno on error
+ */
+static int nvram_init(void)
 {
 	if (nvram)
 		return 0;
@@ -207,8 +212,15 @@ static int is_printable_string(const uint8_t* buf, uint32_t size)
 
 char *nvram_get(const char* varname)
 {
-	if (!varname || !nvram)
+	if (!varname)
 		return NULL;
+
+	const int r = nvram_init();
+	if (r) {
+		pr_err("nvram: init failed [%d]\n", r);
+		return NULL;
+	}
+
 	struct libnvram_entry *entry = libnvram_list_get(nvram->list, (uint8_t*) varname, strlen(varname) + 1);
 	if (entry && is_printable_string(entry->value, entry->value_len))
 		return (char*) entry->value;
@@ -236,12 +248,14 @@ static int starts_with(const char* str, const char* prefix)
 
 int nvram_set(const char* varname, const char* value)
 {
-	if (!nvram) {
-		pr_err("nvram not loaded\n");
-		return 1;
-	}
 	if (!varname)
 		return 1;
+
+	int r = nvram_init();
+	if (r) {
+		pr_err("nvram: init failed [%d]\n", r);
+		return 1;
+	}
 
 	if (!is_printable_string((uint8_t*) varname, strlen(varname) + 1)) {
 		pr_err("nvram: varname not printable\n");
@@ -273,7 +287,7 @@ int nvram_set(const char* varname, const char* value)
 	entry.key_len = strlen(varname) + 1;
 	entry.value = (uint8_t*) value;
 	entry.value_len = strlen(value) + 1;
-	int r = libnvram_list_set(&nvram->list, &entry);
+	r = libnvram_list_set(&nvram->list, &entry);
 	if (r) {
 		pr_err("nvram list_set libnvram_error: %d\n", r);
 		return 1;
@@ -297,7 +311,9 @@ int nvram_set_env(const char* varname, const char* envname)
 
 struct libnvram_list* const nvram_get_list(void)
 {
-	if (!nvram) {
+	const int r = nvram_init();
+	if (r) {
+		pr_err("nvram: init failed [%d]\n", r);
 		return NULL;
 	}
 	return nvram->list;
