@@ -114,7 +114,7 @@ static int load_fit(const char* interface, int device, int part, const char* lab
 	}
 
 	/* Find partition */
-	disk_partition_t part_info;
+	struct disk_partition part_info;
 	int partnr = -1;
 	/* Search by label first, if provided */
 	if (label) {
@@ -202,7 +202,7 @@ static int boot_fit(const char* fit_conf)
 	return -EFAULT;
 }
 
-static int do_system_load(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_system_load(struct cmd_tbl* cmdtp, int flag, int argc,
 		char * const argv[])
 {
 	int r = 0;
@@ -260,7 +260,7 @@ U_BOOT_CMD(
 	"  --part    -- partition index of root partition, disables root swap\n"
 );
 
-static int do_system_boot(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_system_boot(struct cmd_tbl* cmdtp, int flag, int argc,
 			char * const argv[])
 {
 	int r = 0;

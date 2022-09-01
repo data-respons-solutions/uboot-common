@@ -3,7 +3,7 @@
 #include "nvram.h"
 #include "libnvram/libnvram.h"
 
-static int do_nvram(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_nvram(struct cmd_tbl* cmdtp, int flag, int argc,
 			char * const argv[])
 {
 	if (argc < 2) {

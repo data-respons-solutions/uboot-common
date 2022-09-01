@@ -230,12 +230,12 @@ static int load_android(AvbSlotVerifyData* avb_data)
 	return -EFAULT;
 }
 
-static int do_android_boot(cmd_tbl_t *cmdtp, int flag, int argc,
+static int do_android_boot(struct cmd_tbl* cmdtp, int flag, int argc,
 			char * const argv[])
 {
 	AvbSlotVerifyData *avb_data = NULL;
 	struct blk_desc *slot_dev = NULL;
-	disk_partition_t slot_part;
+	struct disk_partition slot_part;
 	int slot = -1;
 	int r = CMD_RET_FAILURE;
 

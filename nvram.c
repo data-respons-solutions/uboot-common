@@ -1,4 +1,5 @@
 #include <common.h>
+#include <env.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <spi_flash.h>
