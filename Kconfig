@@ -42,14 +42,6 @@ config DR_NVRAM_CS
 	int "CS for flash"
 	default 0
 	
-config DR_NVRAM_SPEED
-	int "Speed for flash"
-	default 0
-	
-config DR_NVRAM_MODE
-	hex "mode for flash"
-	default 0
-	
 config DR_NVRAM_SECTION_A_START
 	hex "Section a offset in flash"
 	default 0

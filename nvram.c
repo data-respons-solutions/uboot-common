@@ -19,9 +19,7 @@ static struct nvram* nvram = NULL;
 
 static int probe_flash(struct udevice** flash)
 {
-	int r = spi_flash_probe_bus_cs(CONFIG_DR_NVRAM_BUS, CONFIG_DR_NVRAM_CS,
-								CONFIG_DR_NVRAM_SPEED, CONFIG_DR_NVRAM_MODE,
-								flash);
+	int r = spi_flash_probe_bus_cs(CONFIG_DR_NVRAM_BUS, CONFIG_DR_NVRAM_CS, flash);
 	if (r) {
 		pr_err("nvram: failed probing spi %d:%d: %d\n", CONFIG_DR_NVRAM_BUS, CONFIG_DR_NVRAM_CS, r);
 		return r;
