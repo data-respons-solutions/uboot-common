@@ -2,14 +2,15 @@
 #include <env.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <spi_flash.h>
+#include <mtd.h>
 #include <inttypes.h>
 #include <linux/ctype.h>
 #include "nvram.h"
 #include "libnvram/libnvram.h"
 
 struct nvram {
-	struct udevice *flash;
+	struct mtd_info* system_a;
+	struct mtd_info* system_b;
 	struct libnvram_transaction trans;
 	struct libnvram_list *list;
 	int list_updated;
@@ -17,31 +18,21 @@ struct nvram {
 
 static struct nvram* nvram = NULL;
 
-static int probe_flash(struct udevice** flash)
+static int read_section(struct mtd_info* mtd, uint8_t** data, size_t* len)
 {
-	int r = spi_flash_probe_bus_cs(CONFIG_DR_NVRAM_BUS, CONFIG_DR_NVRAM_CS, flash);
-	if (r) {
-		pr_err("nvram: failed probing spi %d:%d: %d\n", CONFIG_DR_NVRAM_BUS, CONFIG_DR_NVRAM_CS, r);
-		return r;
-	}
-	pr_debug("nvram: probed spi %d:%d: %s\n", CONFIG_DR_NVRAM_BUS, CONFIG_DR_NVRAM_CS, (*flash)->name);
-
-	return 0;
-}
-
-static int read_section(struct udevice* flash, uint32_t offset, uint8_t** data, uint32_t len)
-{
-	uint8_t *buf = malloc(len);
+	size_t retlen = 0;
+	uint8_t *buf = malloc(mtd->size);
 	if (!buf)
 		return -ENOMEM;
 
-	int r = spi_flash_read_dm(flash, offset, len, buf);
-	if (r) {
+	int r = mtd_read(mtd, 0, mtd->size, &retlen, buf);
+	if (r != 0 || retlen != mtd->size) {
 		free(buf);
-		pr_err("nvram: failed reading %s: %d\n", flash->name, r);
+		pr_err("nvram: failed reading %s: %d\n", mtd->name, r);
 		return r;
 	}
 	*data = buf;
+	*len = mtd->size;
 
 	return 0;
 }
@@ -58,6 +49,16 @@ static const char* active_str(enum libnvram_active active)
 	}
 }
 
+struct mtd_info* get_mtd_by_partname(const char* partname)
+{
+	struct mtd_info* mtd = NULL;
+	mtd_for_each_device(mtd) {
+		if (mtd_is_partition(mtd) && (strcmp(mtd->name, partname) == 0))
+			return mtd;
+	}
+	return NULL;
+}
+
 /**
  * nvram_init() - initialize nvram, must be called before any other functions
  *
@@ -69,31 +70,45 @@ static int nvram_init(void)
 		return 0;
 
 	uint8_t *buf_a = NULL;
+	size_t buf_a_len = 0;
 	uint8_t *buf_b = NULL;
+	size_t buf_b_len = 0;
 	nvram = (struct nvram*) malloc(sizeof(struct nvram));
 	if (!nvram)
 		return -ENOMEM;
-
 	memset(nvram, 0, sizeof(struct nvram));
+	int r = 0;
 
-	int r = probe_flash(&nvram->flash);
-	if (r)
-		return r;
-	r = read_section(nvram->flash, CONFIG_DR_NVRAM_SECTION_A_START, &buf_a, CONFIG_DR_NVRAM_SECTION_A_SIZE);
+	/* Ensure all devices (and their partitions) are probed */
+	mtd_probe_devices();
+	nvram->system_a = get_mtd_by_partname("system_a");
+	if (nvram->system_a == NULL) {
+		pr_err("nvram: system_a partition not found\n");
+		r = -ENODEV;
+		goto exit;
+	}
+	nvram->system_b = get_mtd_by_partname("system_b");
+	if (nvram->system_b == NULL) {
+		pr_err("nvram: system_b partition not found\n");
+		r = -ENODEV;
+		goto exit;
+	}
+
+	r = read_section(nvram->system_a, &buf_a, &buf_a_len);
 	if (r)
 		goto exit;
-	r = read_section(nvram->flash, CONFIG_DR_NVRAM_SECTION_B_START, &buf_b, CONFIG_DR_NVRAM_SECTION_B_SIZE);
+	r = read_section(nvram->system_b, &buf_b, &buf_b_len);
 	if (r)
 		goto exit;
 
-	libnvram_init_transaction(&nvram->trans, buf_a, CONFIG_DR_NVRAM_SECTION_A_SIZE, buf_b, CONFIG_DR_NVRAM_SECTION_B_SIZE);
+	libnvram_init_transaction(&nvram->trans, buf_a, buf_a_len, buf_b, buf_b_len);
 	pr_info("nvram: active: %s\n", active_str(nvram->trans.active));
 	if ((nvram->trans.active & LIBNVRAM_ACTIVE_A) == LIBNVRAM_ACTIVE_A) {
-		r = libnvram_deserialize(&nvram->list, buf_a + libnvram_header_len(), CONFIG_DR_NVRAM_SECTION_A_SIZE - libnvram_header_len(), &nvram->trans.section_a.hdr);
+		r = libnvram_deserialize(&nvram->list, buf_a + libnvram_header_len(), buf_a_len - libnvram_header_len(), &nvram->trans.section_a.hdr);
 	}
 	else
 	if ((nvram->trans.active & LIBNVRAM_ACTIVE_B) == LIBNVRAM_ACTIVE_B) {
-		r = libnvram_deserialize(&nvram->list, buf_b + libnvram_header_len(), CONFIG_DR_NVRAM_SECTION_B_SIZE - libnvram_header_len(), &nvram->trans.section_b.hdr);
+		r = libnvram_deserialize(&nvram->list, buf_b + libnvram_header_len(), buf_b_len - libnvram_header_len(), &nvram->trans.section_b.hdr);
 	}
 
 	if (r) {
@@ -117,17 +132,24 @@ exit:
 	return r;
 }
 
-static int write_section(struct udevice* flash, uint32_t offset, const uint8_t* data, uint32_t len)
+static int write_section(struct mtd_info* mtd, const uint8_t* data, size_t len)
 {
-	int r = spi_flash_erase_dm(flash, offset, len);
-	if (r) {
-		pr_err("nvram: failed erasing %s: %d\n", flash->name, r);
+	struct erase_info erase_op = {};
+	size_t retlen = 0;
+
+	erase_op.mtd = mtd;
+	erase_op.addr = 0;
+	erase_op.len = len;
+
+	int r = mtd_erase(mtd, &erase_op);
+	if (r != 0) {
+		pr_err("nvram: failed erasing %s: %d\n", mtd->name, r);
 		return r;
 	}
 
-	r = spi_flash_write_dm(flash, offset, len, data);
-	if (r) {
-		pr_err("nvram: failed writing %s: %d\n", flash->name, r);
+	r = mtd_write(mtd, 0, len, &retlen, data);
+	if (r != 0 || retlen != len) {
+		pr_err("nvram: failed writing %s: %d\n", mtd->name, r);
 		return r;
 	}
 
@@ -144,7 +166,7 @@ int nvram_commit(void)
 	uint8_t *buf = NULL;
 	int r = 0;
 	uint32_t size = libnvram_serialize_size(nvram->list, LIBNVRAM_TYPE_LIST);
-	if (size > CONFIG_DR_NVRAM_SECTION_A_SIZE || size > CONFIG_DR_NVRAM_SECTION_B_SIZE) {
+	if (size > nvram->system_a->size || size > nvram->system_b->size) {
 		pr_err("nvram: serialied size does not fit in flash");
 		return -EFBIG;
 	}
@@ -167,19 +189,17 @@ int nvram_commit(void)
 	const int is_write_a = (op & LIBNVRAM_OPERATION_WRITE_A) == LIBNVRAM_OPERATION_WRITE_A;
 	const int is_counter_reset = (op & LIBNVRAM_OPERATION_COUNTER_RESET) == LIBNVRAM_OPERATION_COUNTER_RESET;
 	// first write
-	if (is_write_a) {
-		r = write_section(nvram->flash, CONFIG_DR_NVRAM_SECTION_A_START, buf, CONFIG_DR_NVRAM_SECTION_A_SIZE);
-	}
-	else {
-		r = write_section(nvram->flash, CONFIG_DR_NVRAM_SECTION_B_START, buf, CONFIG_DR_NVRAM_SECTION_B_SIZE);
-	}
+	if (is_write_a)
+		r = write_section(nvram->system_a, buf, size);
+	else
+		r = write_section(nvram->system_b, buf, size);
 	if (!r && is_counter_reset) {
 		// second write, if requested
 		if (is_write_a) {
-			r = write_section(nvram->flash, CONFIG_DR_NVRAM_SECTION_B_START, buf, CONFIG_DR_NVRAM_SECTION_B_SIZE);
+			r = write_section(nvram->system_b, buf, size);
 		}
 		else {
-			r = write_section(nvram->flash, CONFIG_DR_NVRAM_SECTION_A_START, buf, CONFIG_DR_NVRAM_SECTION_A_SIZE);
+			r = write_section(nvram->system_a, buf, size);
 		}
 	}
 	if (r)

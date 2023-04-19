@@ -4,11 +4,14 @@ menuconfig DR_COMMON_CONFIGS
 	default y
 
 config DR_NVRAM
-	depends on DR_COMMON_CONFIGS && DM_SPI_FLASH
+	depends on DR_COMMON_CONFIGS && DM_MTD
+	select MTD_PARTITIONS
 	bool "DR NVRAM interface"
 	help
 	  Read/write variables in nvram
-	  
+	  Expects to find mtd partitions with names
+	  "system_a" and "system_b".
+
 config CMD_DR_NVRAM
 	depends on DR_COMMON_CONFIGS && DM_SPI_FLASH
 	select DR_NVRAM
@@ -33,30 +36,6 @@ config CMD_DR_ANDROID_BOOT
   
 config SPL_LIBNVRAM
 	bool "libnvram for SPL"
- 
-config DR_NVRAM_BUS
-	int "SPI bus for flash"
-	default 0
-	
-config DR_NVRAM_CS
-	int "CS for flash"
-	default 0
-	
-config DR_NVRAM_SECTION_A_START
-	hex "Section a offset in flash"
-	default 0
-
-config DR_NVRAM_SECTION_A_SIZE
-	hex "Section a size in flash"
-	default 0
-	
-config DR_NVRAM_SECTION_B_START
-	hex "Section b offset in flash"
-	default 0
-
-config DR_NVRAM_SECTION_B_SIZE
-	hex "Section b size in flash"
-	default 0
 
 config DR_PLATFORM_HEADER
 	bool "Platform header parser"
