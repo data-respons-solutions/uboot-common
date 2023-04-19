@@ -57,3 +57,15 @@ config DR_NVRAM_SECTION_B_START
 config DR_NVRAM_SECTION_B_SIZE
 	hex "Section b size in flash"
 	default 0
+
+config DR_PLATFORM_HEADER
+	bool "Platform header parser"
+	
+config SPL_DR_PLATFORM_HEADER
+	bool "Platform header parser for SPL"
+	
+config DR_IMX8M_DDRC
+	bool "iMX8M ddrc parser"
+	
+config SPL_DR_IMX8M_DDRC
+	bool "iMX8M ddrc parser for SPL"
