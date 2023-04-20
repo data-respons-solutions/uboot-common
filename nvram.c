@@ -139,7 +139,7 @@ static int write_section(struct mtd_info* mtd, const uint8_t* data, size_t len)
 
 	erase_op.mtd = mtd;
 	erase_op.addr = 0;
-	erase_op.len = len;
+	erase_op.len = mtd->size;
 
 	int r = mtd_erase(mtd, &erase_op);
 	if (r != 0) {
