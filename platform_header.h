@@ -39,11 +39,17 @@ struct platform_header {
 	uint32_t config2;
 	uint32_t config3;
 	uint32_t config4;
+
 	/*
 	 * Reserved fields for future versions.
 	 * All shall be set to 0.
 	 */
-	uint32_t rsvd[227]; //NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+	uint32_t rsvd[226]; //NOLINT(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
+
+	/*
+	 * Total size of header, padding and blobs, size from start of header.
+	 */
+	uint32_t total_size;
 	/*
 	 * crc32 of header, not including field hdr_crc32.
 	 * zlib crc32 format.

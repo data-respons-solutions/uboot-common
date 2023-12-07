@@ -48,6 +48,7 @@ int parse_header(struct platform_header* header, const uint8_t* buf, size_t size
 	header->config2 = letou32(buf + offsetof(struct platform_header, config2));
 	header->config3 = letou32(buf + offsetof(struct platform_header, config3));
 	header->config4 = letou32(buf + offsetof(struct platform_header, config4));
+	header->total_size = letou32(buf + offsetof(struct platform_header, total_size));
 
 	/* reserved */
 	const size_t rsvd_len = MEMBER_SIZE(struct platform_header, rsvd);
