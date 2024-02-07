@@ -48,3 +48,14 @@ config DR_IMX8M_DDRC
 	
 config SPL_DR_IMX8M_DDRC
 	bool "iMX8M ddrc parser for SPL"
+
+config BLOBLIST_DR_PLATFORM
+	hex "Bloblist tag for platform header"
+	default 0xffff0001
+	
+config DR_PLATFORM_LOADADDR
+	hex "Loadaddres for platform header"
+
+config DR_PLATFORM_IVT
+	hex "Offset for platform header IVT"
+	default 0x400
