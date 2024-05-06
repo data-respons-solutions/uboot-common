@@ -23,6 +23,13 @@ config CMD_DR_SYSTEM_BOOT
 	select DR_NVRAM
 	bool "DR linux boot command"
 	
+config DR_BOOT_IMAGE_PATH
+	string "Path to boot image on disk"
+	default "/boot/fitImage"
+
+config DR_BOOT_IMAGE_LOADADDR
+	hex "Addr for loading boot image"
+	
 config CMD_DR_ANDROID_BOOT
 	select ANDROID_AB
 	select AVB_VERIFY

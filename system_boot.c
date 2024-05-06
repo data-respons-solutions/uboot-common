@@ -144,7 +144,7 @@ static int load_fit(const char* interface, int device, int part, const char* lab
 		return -EFAULT;
 	}
 	loff_t fit_size = 0;
-	r = fs_read(FIT_IMAGE, FIT_ADDR, 0, 0, &fit_size);
+	r = fs_read(CONFIG_DR_BOOT_IMAGE_PATH, CONFIG_DR_BOOT_IMAGE_LOADADDR, 0, 0, &fit_size);
 	fs_close();
 	if (r) {
 		printf("BOOT: Failed reading image\n");
@@ -170,10 +170,10 @@ static int load_fit(const char* interface, int device, int part, const char* lab
 /* fit_conf: Optionally override nvram SYS_FIT_CONF */
 static int boot_fit(const char* fit_conf)
 {
-	/* Build bootm args -- 0x[FIT_ADDR]#[CONFIG] */
-	char fit_addr[17];
-	sprintf(fit_addr, "%lx", (unsigned long) FIT_ADDR);
-	int arglen = strlen(fit_addr) + 1;
+	/* Build bootm args -- 0x[CONFIG_DR_BOOT_IMAGE_LOADADDR]#[CONFIG] */
+	char image_addr[17];
+	sprintf(image_addr, "%lx", (unsigned long) CONFIG_DR_BOOT_IMAGE_LOADADDR);
+	int arglen = strlen(image_addr) + 1;
 	/* check optional config */
 	const char *conf = fit_conf ? fit_conf : nvram_get(sys_fit_conf);
 	if (conf) {
@@ -183,7 +183,7 @@ static int boot_fit(const char* fit_conf)
 	char *arg = malloc(arglen);
 	if (!arg)
 		return -ENOMEM;
-	strcpy(arg, fit_addr);
+	strcpy(arg, image_addr);
 	if (conf) {
 		strcat(arg, "#");
 		strcat(arg, conf);
@@ -193,7 +193,7 @@ static int boot_fit(const char* fit_conf)
 	if (conf) {
 		/* If we're here the fit config might not have been found.
 		 * Make an attempt with default config */
-		strcpy(arg, fit_addr);
+		strcpy(arg, image_addr);
 		do_bootm(NULL, 0, 2, boot_args);
 	}
 
