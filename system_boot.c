@@ -102,7 +102,8 @@ static int nvram_root_swap(char** rootfs_label)
  * part = -1 -> disable
  * label = NULL -> disable
  * */
-static int load_fit(const char* interface, int device, int part, const char* label)
+#define LOAD_FIT_EMPTY_ROOT (1 << 0) /* Don't set root= cmdline argument */
+static int load_fit(const char* interface, int device, int part, const char* label, int options)
 {
 	int r = 0;
 
@@ -152,17 +153,19 @@ static int load_fit(const char* interface, int device, int part, const char* lab
 	}
 
 	/* Set kernel cmdline */
-	const char *root_partuuid = "rootwait root=PARTUUID=";
-	const int cmdline_size = strlen(root_partuuid) + strlen(part_info.uuid) + 1;
-	char *cmdline = malloc(cmdline_size);
-	if (!cmdline)
-		return -ENOMEM;
-	strcpy(cmdline, root_partuuid);
-	strcat(cmdline, part_info.uuid);
-	r = env_set("bootargs", cmdline);
-	free(cmdline);
-	if (r)
-		return -ENOMEM;
+	if ((options & LOAD_FIT_EMPTY_ROOT) != LOAD_FIT_EMPTY_ROOT) {
+		const char *root_partuuid = "rootwait root=PARTUUID=";
+		const int cmdline_size = strlen(root_partuuid) + strlen(part_info.uuid) + 1;
+		char *cmdline = malloc(cmdline_size);
+		if (!cmdline)
+			return -ENOMEM;
+		strcpy(cmdline, root_partuuid);
+		strcat(cmdline, part_info.uuid);
+		r = env_set("bootargs", cmdline);
+		free(cmdline);
+		if (r)
+			return -ENOMEM;
+	}
 
 	return 0;
 }
@@ -215,6 +218,7 @@ static int do_system_load(struct cmd_tbl* cmdtp, int flag, int argc,
 	const int device = simple_strtoul(argv[2], &ep, 10);
 	char* rootfs_label = NULL;
 	int partnr = -1;
+	int options = 0;
 	if (argc > 3) {
 		for (int i = 3; i < argc; ++i) {
 			if (strcmp(argv[i], "--label") == 0) {
@@ -227,6 +231,10 @@ static int do_system_load(struct cmd_tbl* cmdtp, int flag, int argc,
 				if (argc < ++i)
 					return CMD_RET_USAGE;
 				partnr = simple_strtoul(argv[i], &ep, 10);
+			}
+			else
+			if (strcmp(argv[i], "--empty-root") == 0) {
+				options |= LOAD_FIT_EMPTY_ROOT;
 			}
 			else {
 				return CMD_RET_USAGE;
@@ -242,7 +250,7 @@ static int do_system_load(struct cmd_tbl* cmdtp, int flag, int argc,
 		}
 	}
 
-	r = load_fit(interface, device, partnr, rootfs_label);
+	r = load_fit(interface, device, partnr, rootfs_label, options);
 	if (r) {
 		printf("BOOT: failed loading image [%d]: %s\n", r, errno_str(r));
 		return CMD_RET_FAILURE;
@@ -256,8 +264,9 @@ U_BOOT_CMD(
 	"system_load interface device [args]   -- With root swap support\n"
 	"  Note: Increments root swap attempts variable if swap in progress\n"
 	"Args:\n"
-	"  --label   -- gpt label of root partition, disables root swap\n"
-	"  --part    -- partition index of root partition, disables root swap\n"
+	"  --label      -- gpt label of root partition, disables root swap\n"
+	"  --part       -- partition index of root partition, disables root swap\n"
+	"  --empty-root -- Don't set root= kernel cmdline\n"
 );
 
 static int do_system_boot(struct cmd_tbl* cmdtp, int flag, int argc,
